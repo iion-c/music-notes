@@ -1,6 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { REVIEWS, STATS } from '../data/portfolio';
 import { useCountUp } from '../hooks/useScrollReveal';
 
@@ -30,26 +28,12 @@ function StatCounter({ stat }) {
 }
 
 export default function ReviewsSection() {
-  const [current, setCurrent] = useState(0);
-  const autoRef = useRef(null);
-
-  const next = () => setCurrent((c) => (c + 1) % REVIEWS.length);
-  const prev = () => setCurrent((c) => (c - 1 + REVIEWS.length) % REVIEWS.length);
-
-  // Auto-advance carousel every 6s
-  useEffect(() => {
-    autoRef.current = setInterval(next, 6000);
-    return () => clearInterval(autoRef.current);
-  }, []);
-
-  const resetAuto = () => {
-    clearInterval(autoRef.current);
-    autoRef.current = setInterval(next, 6000);
-  };
+  // Duplicate reviews for seamless infinite scrolling
+  const marqueeReviews = [...REVIEWS, ...REVIEWS, ...REVIEWS];
 
   return (
-    <section id="reviews" className="py-24 md:py-32 px-6 bg-bg-primary">
-      <div className="max-w-[1600px] mx-auto">
+    <section id="reviews" className="py-24 md:py-32 bg-bg-primary overflow-hidden">
+      <div className="max-w-[1600px] mx-auto px-6">
 
         {/* Section header */}
         <div className="mb-16 text-center">
@@ -70,86 +54,44 @@ export default function ReviewsSection() {
         </div>
 
         {/* Stats bar */}
-        <div className="grid grid-cols-3 gap-6 mb-20 p-8 bg-bg-card border border-border-subtle rounded-sm reveal-up" data-delay="150">
+        <div className="grid grid-cols-3 gap-6 mb-24 p-8 bg-bg-card border border-border-subtle rounded-sm max-w-4xl mx-auto reveal-up" data-delay="150">
           {STATS.map((stat) => (
             <StatCounter key={stat.label} stat={stat} />
           ))}
         </div>
+      </div>
 
-        {/* Reviews carousel */}
-        <div className="relative max-w-3xl mx-auto reveal-up" data-delay="200">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={current}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.4, ease: 'easeInOut' }}
-              className="bg-bg-card border border-border-subtle rounded-sm p-8 md:p-10 text-center relative overflow-hidden"
+      {/* Infinite Marquee */}
+      <div className="relative w-full reveal-up" data-delay="200">
+        {/* Fade edges */}
+        <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-bg-primary to-transparent z-10 pointer-events-none" />
+        <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-bg-primary to-transparent z-10 pointer-events-none" />
+
+        <div className="flex review-marquee-track hover:[animation-play-state:paused] py-4">
+          {marqueeReviews.map((review, i) => (
+            <div
+              key={`${review.name}-${i}`}
+              className="w-[350px] md:w-[450px] shrink-0 mx-4 bg-bg-card border border-border-subtle rounded-sm p-8 flex flex-col transition-all duration-300 hover:-translate-y-2 hover:border-accent-red/50 hover:shadow-[0_10px_30px_rgba(255,59,48,0.1)] group"
             >
-              {/* Big quote mark */}
-              <div
-                className="absolute top-4 left-6 font-display text-7xl text-accent-red/10 leading-none select-none pointer-events-none"
-                aria-hidden="true"
-              >
-                "
-              </div>
-
-              <Stars count={REVIEWS[current].rating} />
-
-              <blockquote className="mt-6 mb-8 font-editorial italic text-text-primary text-xl md:text-2xl leading-relaxed">
-                "{REVIEWS[current].quote}"
+              <Stars count={review.rating} />
+              
+              <blockquote className="mt-6 mb-8 font-editorial italic text-text-muted text-base leading-relaxed flex-1 group-hover:text-text-primary transition-colors duration-300">
+                "{review.quote}"
               </blockquote>
-
+              
               <div className="border-t border-border-subtle pt-6">
-                <p className="font-display font-bold text-text-primary">{REVIEWS[current].name}</p>
-                <p className="font-ui text-sm text-text-muted mt-1">{REVIEWS[current].title}</p>
-                <div className="flex items-center justify-center gap-2 mt-2">
-                  <span className="font-mono text-xs text-accent-red uppercase tracking-widest">
-                    {REVIEWS[current].platform}
+                <p className="font-display font-bold text-text-primary">{review.name}</p>
+                <p className="font-ui text-sm text-text-muted mt-1">{review.title}</p>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="font-mono text-[10px] text-accent-red uppercase tracking-widest">
+                    {review.platform}
                   </span>
                   <span className="text-border-subtle">·</span>
-                  <span className="font-mono text-xs text-text-muted">{REVIEWS[current].location}</span>
+                  <span className="font-mono text-[10px] text-text-muted uppercase tracking-widest">{review.location}</span>
                 </div>
               </div>
-
-              {/* Shimmer */}
-              <div className="absolute inset-0 shimmer-bg pointer-events-none" />
-            </motion.div>
-          </AnimatePresence>
-
-          {/* Carousel controls */}
-          <div className="flex items-center justify-center gap-6 mt-8">
-            <button
-              onClick={() => { prev(); resetAuto(); }}
-              className="w-10 h-10 rounded-full border border-border-subtle text-text-muted hover:border-text-muted hover:text-text-primary flex items-center justify-center transition-all duration-200"
-              aria-label="Previous review"
-            >
-              <ChevronLeft size={18} />
-            </button>
-
-            {/* Dots */}
-            <div className="flex gap-2">
-              {REVIEWS.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => { setCurrent(i); resetAuto(); }}
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    i === current ? 'w-6 bg-accent-red' : 'w-1.5 bg-border-subtle hover:bg-text-muted'
-                  }`}
-                  aria-label={`Review ${i + 1}`}
-                />
-              ))}
             </div>
-
-            <button
-              onClick={() => { next(); resetAuto(); }}
-              className="w-10 h-10 rounded-full border border-border-subtle text-text-muted hover:border-text-muted hover:text-text-primary flex items-center justify-center transition-all duration-200"
-              aria-label="Next review"
-            >
-              <ChevronRight size={18} />
-            </button>
-          </div>
+          ))}
         </div>
       </div>
     </section>

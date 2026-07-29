@@ -4,18 +4,6 @@
 
 export const PROJECTS = [
   {
-    id: 1,
-    title: 'Editing & Motion Graphics Showreel',
-    client: 'Featured Showreel',
-    category: 'Motion Graphics',
-    tags: ['Featured Showreel', 'Vox-Style Motion Design'],
-    description: 'Comprehensive showcase reel highlighting fast-paced Vox-style 2D animations, kinetic typography, map graphics, and documentary visual storytelling.',
-    videoUrl: 'https://vimeo.com/1214058780',
-    videoId: '1214058780',
-    platform: 'vimeo',
-    featured: true,
-  },
-  {
     id: 2,
     title: 'Shadows of Hiroshima',
     client: 'Historical Documentary',
