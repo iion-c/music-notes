@@ -13,17 +13,10 @@ export default function ContactForm() {
   const [form, setForm] = useState({
     name: '', email: '', videoType: '', duration: '', budget: '', message: '',
   });
-  const [file, setFile] = useState(null);
   const [status, setStatus] = useState('idle'); // idle | sending | success | error
-  const fileRef = useRef(null);
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
-
-  const handleFile = (e) => {
-    const f = e.target.files[0];
-    if (f) setFile(f);
   };
 
   const handleSubmit = async (e) => {
@@ -34,7 +27,6 @@ export default function ContactForm() {
     Object.entries(form).forEach(([k, v]) => data.append(k, v));
     data.append('_replyto', form.email);
     data.append('_subject', `New project inquiry from ${form.name}`);
-    if (file) data.append('attachment', file);
 
     try {
       const res = await fetch(FORMSPREE_URL, {
@@ -45,7 +37,6 @@ export default function ContactForm() {
       if (res.ok) {
         setStatus('success');
         setForm({ name: '', email: '', videoType: '', duration: '', budget: '', message: '' });
-        setFile(null);
       } else {
         setStatus('error');
       }
@@ -99,9 +90,13 @@ export default function ContactForm() {
           >
             <CheckCircle size={48} className="text-green-400 mx-auto mb-4" />
             <h3 className="font-display text-2xl font-bold text-text-primary mb-2">Message Sent!</h3>
-            <p className="font-ui text-text-muted">
+            <p className="font-ui text-text-muted mb-4">
               Thanks for reaching out. I'll be in touch at <span className="text-text-primary">{form.email || 'your email'}</span> shortly.
             </p>
+            <div className="inline-block bg-accent-red/10 border border-accent-red/20 rounded px-4 py-3 text-sm text-text-primary/90 font-ui text-left max-w-md">
+              <span className="font-bold text-accent-red block mb-1">Have a script or brief?</span>
+              You can simply reply to my email and attach your PDF or documents there!
+            </div>
           </motion.div>
         ) : (
           <motion.form
@@ -191,25 +186,6 @@ export default function ContactForm() {
                 placeholder="Tell me about your vision, timeline, and any creative references..."
                 rows={5}
                 className={inputClass}
-              />
-            </div>
-
-            {/* File attachment */}
-            <div>
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                className="flex items-center gap-2 text-text-muted hover:text-text-primary font-mono text-xs uppercase tracking-widest transition-colors duration-200"
-              >
-                <Paperclip size={14} />
-                {file ? file.name : 'Attach Script or Brief (PDF, DOC)'}
-              </button>
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".pdf,.doc,.docx,.txt"
-                onChange={handleFile}
-                className="hidden"
               />
             </div>
 
