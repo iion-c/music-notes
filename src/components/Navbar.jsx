@@ -94,7 +94,7 @@ export default function Navbar() {
             </div>
             {/* CTA */}
             <button
-              onClick={() => scrollTo('#reviews')}
+              onClick={() => scrollTo('#contact')}
               className="px-4 py-2 bg-accent-red text-white font-ui text-sm font-medium rounded hover:bg-red-500 transition-colors duration-200"
             >
               Get a Quote
@@ -138,7 +138,7 @@ export default function Navbar() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.35 }}
-              onClick={() => scrollTo('#reviews')}
+              onClick={() => scrollTo('#contact')}
               className="mt-4 px-8 py-3 bg-accent-red text-white font-ui text-base font-medium rounded"
             >
               Get a Quote

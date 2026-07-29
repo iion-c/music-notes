@@ -44,28 +44,21 @@ export default function Hero() {
       className="relative min-h-screen flex items-center justify-center overflow-hidden grain-overlay"
     >
       {/* ── Background: Vimeo Embed (background=1 mode) ──────────────── */}
-      {/* Replace VIMEO_ID below with actual ID once uploaded */}
-      <div className="absolute inset-0 z-0 bg-bg-primary">
+      <div className="vimeo-wrapper">
+        <iframe
+          src="https://player.vimeo.com/video/1214058780?background=1&autoplay=1&loop=1&byline=0&title=0&muted=1"
+          frameBorder="0"
+          allow="autoplay; fullscreen; picture-in-picture"
+          title="Matthew Delgado Showreel"
+        />
+        {/* Cinematic grid lines overlay */}
         <div
-          className="absolute inset-0 w-full h-full overflow-hidden"
-          style={{ pointerEvents: 'none' }}
-        >
-          <iframe
-            src="https://player.vimeo.com/video/1214058780?background=1&autoplay=1&loop=1&byline=0&title=0&muted=1"
-            className="absolute w-[177.77vh] min-w-full h-[56.25vw] min-h-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-            frameBorder="0"
-            allow="autoplay; fullscreen; picture-in-picture"
-            title="Matthew Delgado Showreel"
-          />
-          {/* Cinematic grid lines overlay */}
-          <div
-            className="absolute inset-0 opacity-[0.03]"
-            style={{
-              backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)',
-              backgroundSize: '80px 80px',
-            }}
-          />
-        </div>
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)',
+            backgroundSize: '80px 80px',
+          }}
+        />
       </div>
 
       {/* ── Gradient overlay ─────────────────────────────────────────── */}
@@ -97,7 +90,7 @@ export default function Hero() {
           initial="hidden"
           animate={loaded ? 'visible' : 'hidden'}
           className="font-display font-bold text-text-primary leading-[1.05] tracking-tight mb-7"
-          style={{ fontSize: 'clamp(2.4rem, 5.5vw, 5rem)' }}
+          style={{ fontSize: 'clamp(2rem, 8vw, 5.5rem)' }}
         >
           {headlineWords.map((word, i) => (
             <motion.span
@@ -134,14 +127,14 @@ export default function Hero() {
         >
           <button
             onClick={scrollToWork}
-            className="group flex items-center gap-2 px-8 py-3.5 bg-accent-red text-white font-ui font-semibold text-sm rounded hover:bg-red-500 transition-all duration-300 hover:shadow-[0_0_30px_rgba(255,59,48,0.35)] hover:scale-[1.02]"
+            className="w-full sm:w-auto group flex justify-center items-center gap-2 px-8 py-3.5 bg-accent-red text-white font-ui font-semibold text-sm rounded hover:bg-red-500 transition-all duration-300 hover:shadow-[0_0_30px_rgba(255,59,48,0.35)] hover:scale-[1.02]"
           >
             <Play size={15} fill="currentColor" />
             Explore Work
           </button>
           <button
             onClick={scrollToContact}
-            className="px-8 py-3.5 border border-border-subtle text-text-primary font-ui font-medium text-sm rounded hover:border-text-muted hover:bg-white/[0.03] transition-all duration-300"
+            className="w-full sm:w-auto px-8 py-3.5 border border-border-subtle text-text-primary font-ui font-medium text-sm rounded hover:border-text-muted hover:bg-white/[0.03] transition-all duration-300"
           >
             Get a Quote
           </button>
@@ -152,7 +145,7 @@ export default function Hero() {
           initial={{ opacity: 0 }}
           animate={loaded ? { opacity: 1 } : {}}
           transition={{ duration: 0.7, delay: 1.4 }}
-          className="flex items-center gap-8 mt-16 pt-8 border-t border-border-subtle"
+          className="w-full flex flex-wrap justify-center items-center gap-4 sm:gap-8 mt-12 sm:mt-16 pt-8 border-t border-border-subtle"
         >
           {[
             { value: '4.8★', label: 'Fiverr Rating' },
