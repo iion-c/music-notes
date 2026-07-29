@@ -341,3 +341,22 @@
   left: 50%;
   transform: translate(-50%, -50%);
 }
+
+/* ============================================================
+   INFINITE MARQUEE (REVIEWS)
+   ============================================================ */
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-33.3333%);
+  }
+}
+
+.review-marquee-track {
+  display: flex;
+  width: fit-content;
+  animation: marquee 30s linear infinite;
+  will-change: transform;
+}

@@ -269,35 +269,68 @@ export default function ProjectsGrid() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               transition={{ duration: 0.4, delay: 0.1 }}
-              className="w-full max-w-6xl aspect-video bg-black rounded-lg overflow-hidden shadow-2xl relative"
+              className="w-full max-w-6xl flex flex-col gap-4 relative"
               onClick={(e) => e.stopPropagation()}
             >
-              {selectedProject.platform === 'youtube' && selectedProject.videoId && (
-                <iframe
-                  src={`https://www.youtube.com/embed/${selectedProject.videoId}?autoplay=1&rel=0`}
-                  title={selectedProject.title}
-                  className="w-full h-full"
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              )}
-              {selectedProject.platform === 'vimeo' && selectedProject.videoId && (
-                <iframe
-                  src={`https://player.vimeo.com/video/${selectedProject.videoId}?autoplay=1&title=0&byline=0&portrait=0`}
-                  title={selectedProject.title}
-                  className="w-full h-full"
-                  frameBorder="0"
-                  allow="autoplay; fullscreen; picture-in-picture"
-                  allowFullScreen
-                />
-              )}
-              {!selectedProject.videoId && (
-                <div className="w-full h-full flex flex-col items-center justify-center text-text-muted">
-                  <Play size={48} className="mb-4 opacity-20" />
-                  <p className="font-mono text-sm uppercase tracking-widest">Video Pending or Private</p>
+              <div className="w-full aspect-video bg-black rounded-lg overflow-hidden shadow-2xl relative">
+                {selectedProject.platform === 'youtube' && selectedProject.videoId && (
+                  <iframe
+                    src={`https://www.youtube.com/embed/${selectedProject.videoId}?autoplay=1&rel=0`}
+                    title={selectedProject.title}
+                    className="w-full h-full"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                )}
+                {selectedProject.platform === 'vimeo' && selectedProject.videoId && (
+                  <iframe
+                    src={`https://player.vimeo.com/video/${selectedProject.videoId}?autoplay=1&title=0&byline=0&portrait=0`}
+                    title={selectedProject.title}
+                    className="w-full h-full"
+                    frameBorder="0"
+                    allow="autoplay; fullscreen; picture-in-picture"
+                    allowFullScreen
+                  />
+                )}
+                {!selectedProject.videoId && (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-text-muted">
+                    <Play size={48} className="mb-4 opacity-20" />
+                    <p className="font-mono text-sm uppercase tracking-widest">Video Pending or Private</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Project info below video (Animated) */}
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                className="flex flex-col md:flex-row items-start justify-between gap-6 bg-bg-card border border-border-subtle p-6 rounded-lg"
+              >
+                <div>
+                  <h3 className="font-display text-2xl md:text-3xl font-bold text-text-primary mb-2">{selectedProject.title}</h3>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="font-mono text-[10px] text-accent-red uppercase tracking-widest bg-accent-red/10 px-2 py-0.5 rounded-full border border-accent-red/20">{selectedProject.client}</span>
+                    <span className="text-border-subtle">·</span>
+                    <span className="font-mono text-[10px] text-text-muted uppercase tracking-widest">{selectedProject.category}</span>
+                  </div>
+                  <p className="font-ui text-sm md:text-base text-text-muted leading-relaxed max-w-3xl">
+                    {selectedProject.description}
+                  </p>
                 </div>
-              )}
+                {selectedProject.videoUrl && (
+                  <a
+                    href={selectedProject.videoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-5 py-3 bg-bg-card-alt border border-border-subtle hover:border-accent-red hover:text-accent-red rounded transition-colors font-mono text-[10px] uppercase tracking-widest shrink-0"
+                  >
+                    Watch on {selectedProject.platform === 'youtube' ? 'YouTube' : 'Vimeo'}
+                    <ExternalLink size={14} />
+                  </a>
+                )}
+              </motion.div>
             </motion.div>
           </motion.div>
         )}
