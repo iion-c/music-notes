@@ -298,10 +298,8 @@
 .avail-pulse { animation: availPulse 2s ease-in-out infinite; }
 
 /* ============================================================
-   PROJECT CARD HOVER VIDEO
+   PROJECT CARD HOVER VIDEO (Removed legacy hover)
    ============================================================ */
-.project-card:hover .card-thumbnail { opacity: 0; }
-.project-card:hover .card-video { opacity: 1; }
 .card-thumbnail, .card-video {
   transition: opacity 0.4s ease;
   position: absolute;
@@ -310,7 +308,6 @@
   height: 100%;
   object-fit: cover;
 }
-.card-video { opacity: 0; }
 
 /* ============================================================
    REVIEW STARS
