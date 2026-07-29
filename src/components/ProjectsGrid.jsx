@@ -220,8 +220,8 @@ export default function ProjectsGrid() {
     return orderA - orderB;
   });
 
-  const featuredProject = filtered.length > 0 ? filtered[0] : null;
-  const standardProjects = filtered.length > 1 ? filtered.slice(1) : [];
+  const featuredProject = activeFilter === 'All' && filtered.length > 0 ? filtered[0] : null;
+  const standardProjects = activeFilter === 'All' && filtered.length > 1 ? filtered.slice(1) : (activeFilter === 'All' ? [] : filtered);
 
   return (
     <section id="work" className="py-24 md:py-32 px-6 lg:px-12 bg-bg-primary">

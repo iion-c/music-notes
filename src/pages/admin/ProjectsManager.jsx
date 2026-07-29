@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
+import { useState, useEffect, useRef } from 'react';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, setDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { PROJECTS as localProjects } from '../../data/portfolio';
 import { Plus, Edit2, Trash2, Save, X, RefreshCw } from 'lucide-react';
@@ -10,6 +10,11 @@ export default function ProjectsManager() {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [currentProject, setCurrentProject] = useState(null);
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
+
+  // Drag and drop refs
+  const dragItemIndex = useRef(null);
+  const dragOverItemIndex = useRef(null);
 
   // Fetch projects from Firestore
   const fetchProjects = async () => {
@@ -104,6 +109,50 @@ export default function ProjectsManager() {
     setCurrentProject({ ...currentProject, tags });
   };
 
+  const handleDragStart = (index) => {
+    dragItemIndex.current = index;
+  };
+
+  const handleDragEnter = (index) => {
+    dragOverItemIndex.current = index;
+  };
+
+  const handleDragEnd = async () => {
+    if (dragItemIndex.current === null || dragOverItemIndex.current === null) return;
+    if (dragItemIndex.current === dragOverItemIndex.current) {
+      dragItemIndex.current = null;
+      dragOverItemIndex.current = null;
+      return;
+    }
+    
+    // Reorder locally
+    const newProjects = [...projects];
+    const draggedItem = newProjects.splice(dragItemIndex.current, 1)[0];
+    newProjects.splice(dragOverItemIndex.current, 0, draggedItem);
+    
+    // Update order property based on new index
+    const updatedProjects = newProjects.map((p, index) => ({ ...p, order: index }));
+    setProjects(updatedProjects);
+    
+    dragItemIndex.current = null;
+    dragOverItemIndex.current = null;
+
+    // Save to Firebase in a batch
+    setIsSavingOrder(true);
+    try {
+      const batch = writeBatch(db);
+      updatedProjects.forEach(proj => {
+        const ref = doc(db, 'projects', String(proj.id));
+        batch.update(ref, { order: proj.order });
+      });
+      await batch.commit();
+    } catch(err) {
+      console.error(err);
+      alert("Error saving new order");
+    }
+    setIsSavingOrder(false);
+  };
+
   if (loading) {
     return <div className="text-text-muted font-mono uppercase tracking-widest animate-pulse">Loading projects...</div>;
   }
@@ -129,16 +178,6 @@ export default function ProjectsManager() {
                 className="w-full bg-bg-primary border border-border-subtle rounded px-4 py-2 text-text-primary focus:border-accent-red outline-none"
                 value={currentProject.title}
                 onChange={(e) => setCurrentProject({...currentProject, title: e.target.value})}
-              />
-            </div>
-            <div>
-              <label className="block font-mono text-[10px] text-text-muted uppercase tracking-widest mb-2">Order (1 = First, 2 = Second, etc)</label>
-              <input 
-                type="number"
-                required
-                className="w-full bg-bg-primary border border-border-subtle rounded px-4 py-2 text-text-primary focus:border-accent-red outline-none"
-                value={currentProject.order || 0}
-                onChange={(e) => setCurrentProject({...currentProject, order: parseInt(e.target.value) || 0})}
               />
             </div>
             <div>
@@ -224,7 +263,8 @@ export default function ProjectsManager() {
     <div>
       <div className="flex items-center justify-between mb-8">
         <h1 className="font-display text-3xl font-bold text-text-primary">Projects</h1>
-        <div className="flex gap-4">
+        <div className="flex gap-4 items-center">
+          {isSavingOrder && <span className="text-xs text-text-muted font-mono uppercase animate-pulse">Saving order...</span>}
           {projects.length === 0 && (
             <button 
               onClick={handleSeedData}
@@ -243,40 +283,51 @@ export default function ProjectsManager() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {projects.map((proj) => (
+        {projects.map((proj, index) => (
           <motion.div 
             key={proj.id}
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-bg-card border border-border-subtle rounded overflow-hidden flex flex-col"
+            draggable
+            onDragStart={() => handleDragStart(index)}
+            onDragEnter={() => handleDragEnter(index)}
+            onDragEnd={handleDragEnd}
+            onDragOver={(e) => e.preventDefault()}
+            className="bg-bg-card border border-border-subtle rounded overflow-hidden flex flex-col cursor-move hover:border-accent-red/50 transition-colors"
           >
-            <div className="aspect-video bg-bg-primary relative border-b border-border-subtle">
+            <div className="aspect-video bg-bg-primary relative border-b border-border-subtle pointer-events-none">
               {proj.platform === 'youtube' && proj.videoId ? (
                 <img src={`https://img.youtube.com/vi/${proj.videoId}/hqdefault.jpg`} className="w-full h-full object-cover opacity-70" alt="thumb" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-text-muted">No Image</div>
               )}
             </div>
-            <div className="p-4 flex-1">
+            <div className="p-4 flex-1 pointer-events-none">
               <div className="flex justify-between items-start gap-2">
                 <h3 className="font-display font-bold text-lg truncate">{proj.title}</h3>
-                <span className="shrink-0 bg-bg-primary px-2 py-0.5 rounded text-xs font-mono border border-border-subtle text-text-muted">Order: {proj.order || 0}</span>
+                {index === 0 && (
+                  <span className="shrink-0 bg-accent-red/10 text-accent-red px-2 py-0.5 rounded text-xs font-mono border border-accent-red/20">Featured</span>
+                )}
               </div>
               <p className="font-mono text-[10px] text-text-muted uppercase mt-1 truncate">{proj.client}</p>
             </div>
             <div className="p-4 border-t border-border-subtle flex justify-between">
               <button 
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   setCurrentProject(proj);
                   setIsEditing(true);
                 }}
-                className="flex items-center gap-1.5 text-xs text-text-muted hover:text-white transition-colors"
+                className="flex items-center gap-1.5 text-xs text-text-muted hover:text-white transition-colors cursor-pointer"
               >
                 <Edit2 size={14} /> Edit
               </button>
               <button 
-                onClick={() => handleDelete(proj.id)}
-                className="flex items-center gap-1.5 text-xs text-text-muted hover:text-accent-red transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete(proj.id);
+                }}
+                className="flex items-center gap-1.5 text-xs text-text-muted hover:text-accent-red transition-colors cursor-pointer"
               >
                 <Trash2 size={14} /> Delete
               </button>
