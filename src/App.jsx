@@ -1,40 +1,40 @@
-import { useState } from 'react';
-import LoadingScreen from './components/LoadingScreen';
-import CustomCursor from './components/CustomCursor';
-import Navbar from './components/Navbar';
-import Hero from './components/Hero';
-import ProjectsGrid from './components/ProjectsGrid';
-import ExperienceTimeline from './components/ExperienceTimeline';
-import ServicesSection from './components/ServicesSection';
-import AboutSection from './components/AboutSection';
-import ReviewsSection from './components/ReviewsSection';
-import ContactForm from './components/ContactForm';
-import Footer from './components/Footer';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import Home from './pages/Home';
+import Login from './pages/admin/Login';
+import AdminLayout from './pages/admin/AdminLayout';
+import ProjectsManager from './pages/admin/ProjectsManager';
+import ReviewsManager from './pages/admin/ReviewsManager';
+
+// Protected Route Wrapper
+function ProtectedRoute({ children }) {
+  const { currentUser } = useAuth();
+  if (!currentUser) {
+    return <Navigate to="/admin/login" />;
+  }
+  return children;
+}
 
 export default function App() {
-  const [loading, setLoading] = useState(true);
-
   return (
-    <>
-      <CustomCursor />
-      
-      {loading && <LoadingScreen onComplete={() => setLoading(false)} />}
-      
-      {/* We keep the main content rendered (but perhaps visually hidden or just underneath the loader)
-          so that images and fonts can load while the loading screen plays. */}
-      <div className={loading ? 'h-screen overflow-hidden' : ''}>
-        <Navbar />
-        <main>
-          <Hero />
-          <ProjectsGrid />
-          <ExperienceTimeline />
-          <ServicesSection />
-          <AboutSection />
-          <ReviewsSection />
-          <ContactForm />
-        </main>
-        <Footer />
-      </div>
-    </>
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          
+          <Route path="/admin/login" element={<Login />} />
+          
+          <Route path="/admin" element={
+            <ProtectedRoute>
+              <AdminLayout />
+            </ProtectedRoute>
+          }>
+            <Route index element={<Navigate to="/admin/projects" replace />} />
+            <Route path="projects" element={<ProjectsManager />} />
+            <Route path="reviews" element={<ReviewsManager />} />
+          </Route>
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }

@@ -1,6 +1,9 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { REVIEWS, STATS } from '../data/portfolio';
+import { REVIEWS as localReviews, STATS } from '../data/portfolio';
 import { useCountUp } from '../hooks/useScrollReveal';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 // Star rating component
 function Stars({ count = 5 }) {
@@ -28,8 +31,27 @@ function StatCounter({ stat }) {
 }
 
 export default function ReviewsSection() {
+  const [reviewsData, setReviewsData] = useState([]);
+
+  useEffect(() => {
+    const fetchReviews = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'reviews'));
+        if (querySnapshot.empty) {
+          setReviewsData(localReviews); // Fallback to local data
+        } else {
+          setReviewsData(querySnapshot.docs.map(doc => doc.data()));
+        }
+      } catch (err) {
+        console.error("Failed to load reviews from Firebase", err);
+        setReviewsData(localReviews);
+      }
+    };
+    fetchReviews();
+  }, []);
+
   // Duplicate reviews for seamless infinite scrolling
-  const marqueeReviews = [...REVIEWS, ...REVIEWS, ...REVIEWS];
+  const marqueeReviews = [...reviewsData, ...reviewsData, ...reviewsData];
 
   return (
     <section id="reviews" className="py-24 md:py-32 bg-bg-primary overflow-hidden">

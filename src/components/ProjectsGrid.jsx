@@ -1,8 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ExternalLink, Play, X } from 'lucide-react';
-import { PROJECTS } from '../data/portfolio';
+import { PROJECTS as localProjects } from '../data/portfolio';
 import { useScrollReveal } from '../hooks/useScrollReveal';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 const CATEGORIES = ['All', 'Documentary', 'Corporate', 'Motion Graphics'];
 
@@ -53,7 +55,7 @@ function FeaturedProjectCard({ project, onClick }) {
               <span className="font-mono text-[9px] text-accent-red uppercase tracking-widest">Featured</span>
             </span>
             <div className="flex flex-wrap gap-2">
-              {project.tags.slice(0, 2).map(tag => (
+              {project.tags?.slice(0, 2).map(tag => (
                 <span key={tag} className="tag-pill border-white/20 text-white/80 bg-black/30 backdrop-blur-sm">{tag}</span>
               ))}
             </div>
@@ -139,7 +141,7 @@ function ProjectCard({ project, onClick, index }) {
       {/* Card content */}
       <div className="p-5 flex-1 flex flex-col">
         <div className="flex flex-wrap gap-1.5 mb-3">
-          {project.tags.slice(0, 2).map((tag) => (
+          {project.tags?.slice(0, 2).map((tag) => (
             <span key={tag} className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
               {tag}
               {project.tags.indexOf(tag) < Math.min(1, project.tags.length - 1) && (
@@ -169,14 +171,48 @@ function ProjectCard({ project, onClick, index }) {
 export default function ProjectsGrid() {
   const [activeFilter, setActiveFilter] = useState('All');
   const [selectedProject, setSelectedProject] = useState(null);
+  const [projectsData, setProjectsData] = useState([]);
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'projects'));
+        if (querySnapshot.empty) {
+          setProjectsData(localProjects); // Fallback to local
+        } else {
+          setProjectsData(querySnapshot.docs.map(doc => doc.data()));
+        }
+      } catch (err) {
+        console.error("Failed to load projects from Firebase", err);
+        setProjectsData(localProjects);
+      }
+    };
+    fetchProjects();
+  }, []);
 
   useScrollReveal('.reveal-up');
 
-  const filtered = activeFilter === 'All'
-    ? PROJECTS
-    : PROJECTS.filter((p) => p.category === activeFilter || p.tags.includes(activeFilter));
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setSelectedProject(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
-  // In the Bento layout, the first item in the filtered list gets the featured treatment
+  useEffect(() => {
+    if (selectedProject) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'auto';
+    }
+    return () => { document.body.style.overflow = 'auto'; };
+  }, [selectedProject]);
+
+  const filtered = activeFilter === 'All'
+    ? projectsData
+    : projectsData.filter((p) => p.category === activeFilter || (p.tags && p.tags.includes(activeFilter)));
+
   const featuredProject = filtered.length > 0 ? filtered[0] : null;
   const standardProjects = filtered.length > 1 ? filtered.slice(1) : [];
 
