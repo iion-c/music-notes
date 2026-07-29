@@ -5,6 +5,10 @@ import Login from './pages/admin/Login';
 import AdminLayout from './pages/admin/AdminLayout';
 import ProjectsManager from './pages/admin/ProjectsManager';
 import ReviewsManager from './pages/admin/ReviewsManager';
+import HeroManager from './pages/admin/HeroManager';
+import ExperienceManager from './pages/admin/ExperienceManager';
+import ServicesManager from './pages/admin/ServicesManager';
+import AboutManager from './pages/admin/AboutManager';
 import CustomCursor from './components/CustomCursor';
 
 // Protected Route Wrapper
@@ -32,6 +36,10 @@ export default function App() {
             </ProtectedRoute>
           }>
             <Route index element={<Navigate to="/admin/projects" replace />} />
+            <Route path="hero" element={<HeroManager />} />
+            <Route path="about" element={<AboutManager />} />
+            <Route path="services" element={<ServicesManager />} />
+            <Route path="experience" element={<ExperienceManager />} />
             <Route path="projects" element={<ProjectsManager />} />
             <Route path="reviews" element={<ReviewsManager />} />
           </Route>

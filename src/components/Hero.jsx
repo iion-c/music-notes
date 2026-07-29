@@ -1,9 +1,19 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Play, ChevronDown } from 'lucide-react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
-// Word-by-word headline reveal animation
-const headlineWords = ['Data-Driven', 'Visual', 'Storytelling', '&', 'Vox-Style', 'Motion', 'Graphics'];
+const defaultHeroData = {
+  categoryLabel: 'Video Editor — Motion Graphics',
+  headline: 'Data-Driven Visual Storytelling & Vox-Style Motion Graphics',
+  highlightedWords: 'Data-Driven, Vox-Style, Motion, Graphics',
+  subHeadline: 'Elevating documentaries, video essays, and explainers with dynamic graphics, precise pacing, and immersive sound design.',
+  videoId: '1214058780',
+  stat1Value: '4.8★', stat1Label: 'Fiverr Rating',
+  stat2Value: '20+', stat2Label: 'Verified Reviews',
+  stat3Value: '6+', stat3Label: 'Years Experience'
+};
 
 const wordVariants = {
   hidden: {},
@@ -23,8 +33,21 @@ const wordChildVariants = {
 
 export default function Hero() {
   const [loaded, setLoaded] = useState(false);
+  const [heroData, setHeroData] = useState(defaultHeroData);
 
   useEffect(() => {
+    const fetchHeroData = async () => {
+      try {
+        const docSnap = await getDoc(doc(db, 'sections', 'hero'));
+        if (docSnap.exists()) {
+          setHeroData(docSnap.data());
+        }
+      } catch (err) {
+        console.error("Failed to fetch hero data", err);
+      }
+    };
+    fetchHeroData();
+
     // Small delay so loader clears first
     const t = setTimeout(() => setLoaded(true), 200);
     return () => clearTimeout(t);
@@ -38,6 +61,9 @@ export default function Hero() {
     document.getElementById('reviews')?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const headlineWords = heroData.headline.split(' ');
+  const highlights = heroData.highlightedWords.split(',').map(w => w.trim());
+
   return (
     <section
       id="hero"
@@ -46,10 +72,10 @@ export default function Hero() {
       {/* ── Background: Vimeo Embed (background=1 mode) ──────────────── */}
       <div className="vimeo-wrapper">
         <iframe
-          src="https://player.vimeo.com/video/1214058780?background=1&autoplay=1&loop=1&byline=0&title=0&muted=1"
+          src={`https://player.vimeo.com/video/${heroData.videoId}?background=1&autoplay=1&loop=1&byline=0&title=0&muted=1`}
           frameBorder="0"
           allow="autoplay; fullscreen; picture-in-picture"
-          title="Matthew Delgado Showreel"
+          title="Background Showreel"
         />
         {/* Cinematic grid lines overlay */}
         <div
@@ -79,7 +105,7 @@ export default function Hero() {
         >
           <div className="h-[1px] w-8 bg-accent-red" />
           <span className="font-mono text-[11px] uppercase tracking-[0.35em] text-accent-red drop-shadow-md">
-            Video Editor — Motion Graphics
+            {heroData.categoryLabel}
           </span>
           <div className="h-[1px] w-8 bg-accent-red" />
         </motion.div>
@@ -94,19 +120,19 @@ export default function Hero() {
             textShadow: '0 8px 32px rgba(0,0,0,0.9), 0 2px 10px rgba(0,0,0,0.8)' 
           }}
         >
-          {headlineWords.map((word, i) => (
-            <motion.span
-              key={i}
-              variants={wordVariants}
-              className={`inline-block mr-[0.25em] ${
-                word === '&' || word === 'Vox-Style' || word === 'Motion' || word === 'Graphics'
-                  ? 'text-accent-red'
-                  : ''
-              }`}
-            >
-              {word}
-            </motion.span>
-          ))}
+          {headlineWords.map((word, i) => {
+            const cleanWord = word.replace(/[^a-zA-Z0-9-&]/g, '');
+            const isHighlighted = highlights.includes(cleanWord) || highlights.includes(word);
+            return (
+              <motion.span
+                key={i}
+                variants={wordVariants}
+                className={`inline-block mr-[0.25em] ${isHighlighted ? 'text-accent-red' : ''}`}
+              >
+                {word}
+              </motion.span>
+            );
+          })}
         </motion.h1>
 
         {/* Sub-headline */}
@@ -117,8 +143,7 @@ export default function Hero() {
           className="font-editorial italic text-text-primary/95 text-lg md:text-2xl max-w-2xl mx-auto leading-relaxed mb-12"
           style={{ textShadow: '0 4px 20px rgba(0,0,0,0.9), 0 2px 8px rgba(0,0,0,0.8)' }}
         >
-          Elevating documentaries, video essays, and explainers with dynamic graphics,
-          precise pacing, and immersive sound design.
+          {heroData.subHeadline}
         </motion.p>
 
         {/* CTA Buttons */}
@@ -151,9 +176,9 @@ export default function Hero() {
           className="w-full flex flex-wrap justify-center items-center gap-4 sm:gap-8 mt-12 sm:mt-16 pt-8 border-t border-border-subtle"
         >
           {[
-            { value: '4.8★', label: 'Fiverr Rating' },
-            { value: '20+', label: 'Verified Reviews' },
-            { value: '6+', label: 'Years Experience' },
+            { value: heroData.stat1Value, label: heroData.stat1Label },
+            { value: heroData.stat2Value, label: heroData.stat2Label },
+            { value: heroData.stat3Value, label: heroData.stat3Label },
           ].map((stat) => (
             <div key={stat.label} className="text-center">
               <div className="font-display font-bold text-2xl text-text-primary">{stat.value}</div>

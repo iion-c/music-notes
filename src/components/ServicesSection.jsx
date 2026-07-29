@@ -1,5 +1,8 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { SERVICES, SKILLS_MARQUEE } from '../data/portfolio';
+import { SERVICES as localServices, SKILLS_MARQUEE as localSkills } from '../data/portfolio';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 function ServiceCard({ service, index }) {
   return (
@@ -40,8 +43,38 @@ function ServiceCard({ service, index }) {
 }
 
 export default function ServicesSection() {
+  const [servicesData, setServicesData] = useState([]);
+  const [skillsData, setSkillsData] = useState([]);
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'services'));
+        if (querySnapshot.empty) {
+          setServicesData(localServices);
+        } else {
+          let srvs = querySnapshot.docs.map(doc => doc.data());
+          srvs.sort((a, b) => parseInt(a.id) - parseInt(b.id));
+          setServicesData(srvs);
+        }
+
+        const skillsSnap = await getDoc(doc(db, 'sections', 'skills'));
+        if (skillsSnap.exists() && skillsSnap.data().list?.length > 0) {
+          setSkillsData(skillsSnap.data().list);
+        } else {
+          setSkillsData(localSkills);
+        }
+      } catch (err) {
+        console.error("Failed to load services from Firebase", err);
+        setServicesData(localServices);
+        setSkillsData(localSkills);
+      }
+    };
+    fetchServices();
+  }, []);
+
   // Duplicate marquee items for seamless loop
-  const marqueeItems = [...SKILLS_MARQUEE, ...SKILLS_MARQUEE];
+  const marqueeItems = [...skillsData, ...skillsData, ...skillsData];
 
   return (
     <section className="py-24 md:py-32 bg-bg-primary">
@@ -66,7 +99,7 @@ export default function ServicesSection() {
 
         {/* Services grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-20">
-          {SERVICES.map((s, i) => (
+          {servicesData.map((s, i) => (
             <ServiceCard key={s.id} service={s} index={i} />
           ))}
         </div>

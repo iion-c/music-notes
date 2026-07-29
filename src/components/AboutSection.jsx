@@ -1,10 +1,40 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
-/**
- * AboutSection — Profile bio with placeholder for photo,
- * highlights of specialization, and personal philosophy.
- */
+const defaultAboutData = {
+  headline: 'Storytelling Is an Act of Precision',
+  bio: `I'm Matthew Delgado, a freelance video editor and motion graphics artist with over 6 years of experience turning raw footage into stories that inform, inspire, and move people to action.\n\nMy work lives at the intersection of journalism and design. Inspired by the visual language of Vox, Johnny Harris, and investigative documentary filmmaking, I specialize in building narrative architecture through precise cuts, data-driven motion graphics, and immersive sound design.\n\nFrom the Venice Architecture Biennale to anti-corruption documentaries in Somalia, from Hong Kong film festival submissions to corporate leadership series in Australia — each project gets the same obsessive attention to detail.`,
+  ratingBadge: '4.8',
+  fiverrUrl: 'https://www.fiverr.com',
+  achievements: [
+    { icon: '🎬', label: 'Documentary Specialist' },
+    { icon: '✦', label: 'Vox-Style Motion Graphics' },
+    { icon: '🔊', label: 'Sound Design & Mix' },
+    { icon: '🌍', label: 'International Clients' }
+  ]
+};
+
 export default function AboutSection() {
+  const [aboutData, setAboutData] = useState(defaultAboutData);
+
+  useEffect(() => {
+    const fetchAboutData = async () => {
+      try {
+        const docSnap = await getDoc(doc(db, 'sections', 'about'));
+        if (docSnap.exists()) {
+          setAboutData(docSnap.data());
+        }
+      } catch (err) {
+        console.error("Failed to load about data from Firebase", err);
+      }
+    };
+    fetchAboutData();
+  }, []);
+
+  const bioParagraphs = aboutData.bio.split('\n').filter(p => p.trim() !== '');
+
   return (
     <section id="about" className="py-24 md:py-32 px-6 bg-bg-card grain-overlay relative overflow-hidden">
       {/* Ambient orb */}
@@ -45,7 +75,7 @@ export default function AboutSection() {
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-accent-yellow text-sm">★★★★★</span>
               </div>
-              <p className="font-display text-2xl font-bold text-text-primary">4.8</p>
+              <p className="font-display text-2xl font-bold text-text-primary">{aboutData.ratingBadge}</p>
               <p className="font-mono text-[10px] text-text-muted uppercase tracking-widest">Fiverr Rating</p>
             </div>
           </motion.div>
@@ -68,37 +98,19 @@ export default function AboutSection() {
               className="font-display font-bold text-text-primary mb-6"
               style={{ fontSize: 'clamp(1.8rem, 3.5vw, 3rem)' }}
             >
-              Storytelling Is an Act of Precision
+              {aboutData.headline}
             </h2>
 
             <div className="space-y-4 font-ui text-text-muted text-base leading-relaxed">
-              <p>
-                I'm <span className="text-text-primary font-medium">Matthew Delgado</span>, a freelance video editor and motion graphics artist 
-                with over 6 years of experience turning raw footage into stories that inform, 
-                inspire, and move people to action.
-              </p>
-              <p>
-                My work lives at the intersection of journalism and design. Inspired by the visual 
-                language of <span className="text-text-primary italic">Vox, Johnny Harris, and investigative documentary filmmaking</span>, 
-                I specialize in building narrative architecture through precise cuts, 
-                data-driven motion graphics, and immersive sound design.
-              </p>
-              <p>
-                From the Venice Architecture Biennale to anti-corruption documentaries in Somalia, 
-                from Hong Kong film festival submissions to corporate leadership series in Australia — 
-                each project gets the same obsessive attention to detail.
-              </p>
+              {bioParagraphs.map((p, i) => (
+                <p key={i}>{p}</p>
+              ))}
             </div>
 
             {/* Key achievements */}
             <div className="mt-8 grid grid-cols-2 gap-4">
-              {[
-                { icon: '🎬', label: 'Documentary Specialist' },
-                { icon: '✦', label: 'Vox-Style Motion Graphics' },
-                { icon: '🔊', label: 'Sound Design & Mix' },
-                { icon: '🌍', label: 'International Clients' },
-              ].map((item) => (
-                <div key={item.label} className="flex items-center gap-3 p-3 bg-bg-primary rounded-sm border border-border-subtle">
+              {aboutData.achievements.map((item, idx) => (
+                <div key={idx} className="flex items-center gap-3 p-3 bg-bg-primary rounded-sm border border-border-subtle">
                   <span className="text-lg">{item.icon}</span>
                   <span className="font-ui text-xs text-text-muted">{item.label}</span>
                 </div>
@@ -114,7 +126,7 @@ export default function AboutSection() {
                 Start a Project
               </button>
               <a
-                href="https://www.fiverr.com"
+                href={aboutData.fiverrUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-6 py-3 border border-border-subtle text-text-muted font-ui font-medium text-sm rounded hover:border-text-muted hover:text-text-primary transition-colors duration-200"

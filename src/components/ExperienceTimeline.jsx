@@ -1,10 +1,36 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
-import { EXPERIENCE } from '../data/portfolio';
+import { EXPERIENCE as localExperience } from '../data/portfolio';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 export default function ExperienceTimeline() {
-  const [openId, setOpenId] = useState(1); // First item open by default
+  const [openId, setOpenId] = useState(null); 
+  const [experienceData, setExperienceData] = useState([]);
+
+  useEffect(() => {
+    const fetchExp = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'experience'));
+        if (querySnapshot.empty) {
+          setExperienceData(localExperience);
+          setOpenId(localExperience[0]?.id);
+        } else {
+          let exps = querySnapshot.docs.map(doc => doc.data());
+          // Sort numeric ids
+          exps.sort((a, b) => parseInt(a.id) - parseInt(b.id));
+          setExperienceData(exps);
+          setOpenId(exps[0]?.id);
+        }
+      } catch (err) {
+        console.error("Failed to load experience from Firebase", err);
+        setExperienceData(localExperience);
+        setOpenId(localExperience[0]?.id);
+      }
+    };
+    fetchExp();
+  }, []);
 
   return (
     <section id="services" className="py-24 md:py-32 px-6 bg-bg-card">
@@ -36,7 +62,7 @@ export default function ExperienceTimeline() {
           <div className="absolute left-4 md:left-6 top-0 bottom-0 w-[1px] timeline-line hidden md:block" />
 
           <div className="space-y-3">
-            {EXPERIENCE.map((exp, i) => {
+            {experienceData.map((exp, i) => {
               const isOpen = openId === exp.id;
               return (
                 <motion.div
