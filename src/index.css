@@ -1,0 +1,318 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   MATTHEW DELGADO PORTFOLIO — Global Styles
+   Dark Editorial / Vox-Style Aesthetic
+   ============================================================ */
+
+/* Google Fonts — Loaded via index.html link tag */
+
+/* Balto Font — Display (Editorial Headings) */
+@font-face {
+  font-family: 'Balto';
+  src: url('/fonts/Balto-Bold.woff2') format('woff2'),
+       url('/fonts/Balto-Bold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Balto';
+  src: url('/fonts/Balto-Book.woff2') format('woff2'),
+       url('/fonts/Balto-Book.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html {
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: #0f0f0f;
+    color: #f5f5f5;
+    overflow-x: hidden;
+    cursor: none; /* Custom cursor active */
+  }
+
+  h1, h2, h3, h4, h5 {
+    font-family: 'Balto', 'Inter', sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  /* Custom thin scrollbar — editorial dark */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: #0f0f0f; }
+  ::-webkit-scrollbar-thumb {
+    background: #2a2a2a;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: #ff3b30; }
+
+  /* Text selection */
+  ::selection {
+    background-color: #ff3b30;
+    color: #fff;
+  }
+}
+
+/* ============================================================
+   GRAIN TEXTURE OVERLAY (Cinemática)
+   ============================================================ */
+.grain-overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  opacity: 0.35;
+  mix-blend-mode: overlay;
+  z-index: 1;
+}
+
+/* ============================================================
+   SHIMMER ANIMATION (Card surfaces)
+   ============================================================ */
+.shimmer-bg {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,0.025) 50%,
+    rgba(255,255,255,0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 4s infinite linear;
+}
+
+/* ============================================================
+   GLOW UTILITIES (Accent colors)
+   ============================================================ */
+.glow-red {
+  box-shadow: 0 0 25px rgba(255, 59, 48, 0.18);
+}
+.glow-red-lg {
+  box-shadow: 0 0 45px rgba(255, 59, 48, 0.3);
+}
+.glow-red-border {
+  border-color: rgba(255, 59, 48, 0.35);
+  box-shadow: 0 0 15px rgba(255, 59, 48, 0.1);
+}
+
+/* ============================================================
+   CUSTOM CURSOR
+   ============================================================ */
+.cursor-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #ff3b30;
+  border-radius: 50%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 9999;
+  transition: transform 0.1s ease;
+}
+
+.cursor-outline {
+  width: 36px;
+  height: 36px;
+  border: 1.5px solid rgba(255, 59, 48, 0.6);
+  border-radius: 50%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 9998;
+  transition: width 0.25s ease, height 0.25s ease, border-color 0.25s ease, background-color 0.25s ease;
+}
+
+.cursor-outline.cursor-hover {
+  width: 60px;
+  height: 60px;
+  border-color: rgba(255, 59, 48, 0.9);
+  background-color: rgba(255, 59, 48, 0.08);
+}
+
+.cursor-outline.cursor-video {
+  width: 72px;
+  height: 72px;
+  border-color: #ff3b30;
+  background-color: rgba(255, 59, 48, 0.12);
+}
+
+/* ============================================================
+   LOADING SCREEN
+   ============================================================ */
+.loader-line {
+  animation: loaderExpand 1.8s cubic-bezier(0.77, 0, 0.18, 1) forwards;
+}
+
+@keyframes loaderExpand {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
+
+/* ============================================================
+   SECTION REVEAL (Scroll-driven)
+   ============================================================ */
+.reveal-up {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.reveal-up.in-view {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-left {
+  opacity: 0;
+  transform: translateX(-32px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.reveal-left.in-view {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* ============================================================
+   CLIP-PATH HEADLINE REVEAL
+   ============================================================ */
+.clip-reveal {
+  clip-path: inset(0 100% 0 0);
+  animation: clipReveal 1s cubic-bezier(0.77, 0, 0.18, 1) forwards;
+}
+
+@keyframes clipReveal {
+  from { clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 0% 0 0); }
+}
+
+/* ============================================================
+   AMBIENT ORB BACKGROUNDS
+   ============================================================ */
+.ambient-orb-red {
+  position: fixed;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 59, 48, 0.07) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ============================================================
+   TAG PILLS
+   ============================================================ */
+.tag-pill {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded text-xs font-mono tracking-wider uppercase;
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  color: #ff3b30;
+  background: rgba(255, 59, 48, 0.06);
+}
+
+/* ============================================================
+   VIDEO MODAL
+   ============================================================ */
+.modal-backdrop {
+  @apply fixed inset-0 z-50 flex items-center justify-center;
+  background: rgba(0, 0, 0, 0.94);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* ============================================================
+   TIMELINE
+   ============================================================ */
+.timeline-line {
+  background: linear-gradient(to bottom, #ff3b30, #2a2a2a);
+}
+
+/* ============================================================
+   STATS COUNTER
+   ============================================================ */
+.stat-number {
+  font-family: 'Balto', 'Inter', sans-serif;
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 700;
+  color: #f5f5f5;
+  line-height: 1;
+}
+
+/* ============================================================
+   HERO VIDEO OVERLAY
+   ============================================================ */
+.hero-overlay {
+  background: linear-gradient(
+    to bottom,
+    rgba(15,15,15,0.5) 0%,
+    rgba(15,15,15,0.2) 50%,
+    rgba(15,15,15,0.85) 100%
+  );
+}
+
+/* ============================================================
+   MARQUEE (Logo / Skills strip)
+   ============================================================ */
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 28s linear infinite;
+}
+
+/* ============================================================
+   NAVBAR BLUR
+   ============================================================ */
+.navbar-blur {
+  background: rgba(15, 15, 15, 0.82);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+/* ============================================================
+   SCROLL INDICATOR
+   ============================================================ */
+@keyframes scrollBounce {
+  0%, 100% { transform: translateY(0); opacity: 0.7; }
+  50%       { transform: translateY(8px); opacity: 1; }
+}
+.scroll-indicator { animation: scrollBounce 1.8s ease-in-out infinite; }
+
+/* ============================================================
+   AVAILABILITY BADGE PULSE
+   ============================================================ */
+@keyframes availPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
+  70%       { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+}
+.avail-pulse { animation: availPulse 2s ease-in-out infinite; }
+
+/* ============================================================
+   PROJECT CARD HOVER VIDEO
+   ============================================================ */
+.project-card:hover .card-thumbnail { opacity: 0; }
+.project-card:hover .card-video { opacity: 1; }
+.card-thumbnail, .card-video {
+  transition: opacity 0.4s ease;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.card-video { opacity: 0; }
+
+/* ============================================================
+   REVIEW STARS
+   ============================================================ */
+.star { color: #f5c518; }
