@@ -68,7 +68,7 @@ export default function Hero() {
       <div className="absolute bottom-0 left-1/4 w-[600px] h-[400px] bg-accent-red/5 rounded-full blur-[120px] pointer-events-none z-10" />
 
       {/* ── Hero Content ─────────────────────────────────────────────── */}
-      <div className="relative z-20 max-w-6xl mx-auto px-6 text-center pt-24 flex flex-col items-center">
+      <div className="relative z-20 w-full max-w-5xl mx-auto px-4 md:px-6 text-center pt-24 flex flex-col items-center">
 
         {/* Category label */}
         <motion.div
@@ -84,8 +84,6 @@ export default function Hero() {
           <div className="h-[1px] w-8 bg-accent-red" />
         </motion.div>
 
-        <div className="relative z-20 w-full max-w-5xl mx-auto px-4 md:px-6 pt-24 pb-16 flex flex-col items-center">
-        
         {/* Frosted Glass Container to ensure text readability over busy video */}
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
