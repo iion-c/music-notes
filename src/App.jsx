@@ -5,6 +5,7 @@ import Login from './pages/admin/Login';
 import AdminLayout from './pages/admin/AdminLayout';
 import ProjectsManager from './pages/admin/ProjectsManager';
 import ReviewsManager from './pages/admin/ReviewsManager';
+import CustomCursor from './components/CustomCursor';
 
 // Protected Route Wrapper
 function ProtectedRoute({ children }) {
@@ -19,6 +20,7 @@ export default function App() {
   return (
     <AuthProvider>
       <Router>
+        <CustomCursor />
         <Routes>
           <Route path="/" element={<Home />} />
           

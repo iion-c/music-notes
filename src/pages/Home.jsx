@@ -16,8 +16,6 @@ export default function Home() {
 
   return (
     <>
-      <CustomCursor />
-      
       {loading && <LoadingScreen onComplete={() => setLoading(false)} />}
       
       <div className={loading ? 'h-screen overflow-hidden' : ''}>
