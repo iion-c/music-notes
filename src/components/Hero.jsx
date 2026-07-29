@@ -84,60 +84,69 @@ export default function Hero() {
           <div className="h-[1px] w-8 bg-accent-red" />
         </motion.div>
 
-        {/* Headline with word-by-word clip reveal */}
-        <motion.h1
-          variants={wordVariants}
-          initial="hidden"
-          animate={loaded ? 'visible' : 'hidden'}
-          className="font-display font-bold text-text-primary leading-[1.05] tracking-tight mb-7"
-          style={{ fontSize: 'clamp(2rem, 8vw, 5.5rem)' }}
+        <div className="relative z-20 w-full max-w-5xl mx-auto px-4 md:px-6 pt-24 pb-16 flex flex-col items-center">
+        
+        {/* Frosted Glass Container to ensure text readability over busy video */}
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={loaded ? { opacity: 1, scale: 1 } : {}}
+          transition={{ duration: 0.8, delay: 0.2 }}
+          className="bg-black/50 backdrop-blur-xl border border-white/10 shadow-2xl rounded-3xl p-8 md:p-14 w-full flex flex-col items-center text-center"
         >
-          {headlineWords.map((word, i) => (
-            <motion.span
-              key={i}
-              variants={wordChildVariants}
-              className={`inline-block mr-[0.25em] ${
-                word === '&' || word === 'Vox-Style' || word === 'Motion' || word === 'Graphics'
-                  ? 'text-accent-red'
-                  : ''
-              }`}
+          {/* Headline */}
+          <motion.h1
+            initial="hidden"
+            animate={loaded ? 'visible' : 'hidden'}
+            className="font-display font-bold text-text-primary leading-[1.05] tracking-tight mb-7"
+            style={{ fontSize: 'clamp(2.2rem, 6vw, 5.5rem)' }}
+          >
+            {headlineWords.map((word, i) => (
+              <motion.span
+                key={i}
+                variants={wordVariants}
+                className={`inline-block mr-[0.25em] ${
+                  word === '&' || word === 'Vox-Style' || word === 'Motion' || word === 'Graphics'
+                    ? 'text-accent-red'
+                    : ''
+                }`}
+              >
+                {word}
+              </motion.span>
+            ))}
+          </motion.h1>
+
+          {/* Sub-headline */}
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
+            animate={loaded ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.7, delay: 0.85 }}
+            className="font-editorial italic text-text-primary/90 text-lg md:text-2xl max-w-2xl mx-auto leading-relaxed mb-12"
+          >
+            Elevating documentaries, video essays, and explainers with dynamic graphics,
+            precise pacing, and immersive sound design.
+          </motion.p>
+
+          {/* CTA Buttons */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={loaded ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.6, delay: 1.1 }}
+            className="flex flex-col sm:flex-row gap-4 items-center"
+          >
+            <button
+              onClick={scrollToWork}
+              className="w-full sm:w-auto group flex justify-center items-center gap-2 px-8 py-3.5 bg-accent-red text-white font-ui font-semibold text-sm rounded-lg hover:bg-red-500 transition-all duration-300 shadow-lg hover:shadow-accent-red/40 hover:scale-[1.02]"
             >
-              {word}
-            </motion.span>
-          ))}
-        </motion.h1>
-
-        {/* Sub-headline */}
-        <motion.p
-          initial={{ opacity: 0, y: 16 }}
-          animate={loaded ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.7, delay: 0.85 }}
-          className="font-editorial italic text-text-muted text-lg md:text-xl max-w-2xl mx-auto leading-relaxed mb-12"
-        >
-          Elevating documentaries, video essays, and explainers with dynamic graphics,
-          precise pacing, and immersive sound design.
-        </motion.p>
-
-        {/* CTA Buttons */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={loaded ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, delay: 1.1 }}
-          className="flex flex-col sm:flex-row gap-4 items-center"
-        >
-          <button
-            onClick={scrollToWork}
-            className="w-full sm:w-auto group flex justify-center items-center gap-2 px-8 py-3.5 bg-accent-red text-white font-ui font-semibold text-sm rounded hover:bg-red-500 transition-all duration-300 hover:shadow-[0_0_30px_rgba(255,59,48,0.35)] hover:scale-[1.02]"
-          >
-            <Play size={15} fill="currentColor" />
-            Explore Work
-          </button>
-          <button
-            onClick={scrollToContact}
-            className="w-full sm:w-auto px-8 py-3.5 border border-border-subtle text-text-primary font-ui font-medium text-sm rounded hover:border-text-muted hover:bg-white/[0.03] transition-all duration-300"
-          >
-            Get a Quote
-          </button>
+              <Play size={15} fill="currentColor" />
+              Explore Work
+            </button>
+            <button
+              onClick={scrollToContact}
+              className="w-full sm:w-auto px-8 py-3.5 bg-white/10 backdrop-blur-md border border-white/20 text-white font-ui font-medium text-sm rounded-lg hover:bg-white/20 transition-all duration-300"
+            >
+              Get a Quote
+            </button>
+          </motion.div>
         </motion.div>
 
         {/* Stats row */}

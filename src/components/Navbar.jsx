@@ -44,8 +44,8 @@ export default function Navbar() {
   return (
     <>
       <nav
-        className={`fixed top-0 left-0 right-0 z-40 transition-all duration-500 ${
-          scrolled ? 'navbar-blur py-3' : 'py-5 bg-transparent'
+        className={`fixed w-full z-50 top-0 transition-all duration-300 px-6 py-4 bg-bg-primary/95 backdrop-blur-md border-b ${
+          scrolled ? 'border-border-subtle shadow-lg' : 'border-transparent'
         }`}
       >
         <div className="max-w-[1600px] mx-auto px-6 flex items-center justify-between">
