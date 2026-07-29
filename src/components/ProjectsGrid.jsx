@@ -105,14 +105,14 @@ function ProjectCard({ project, onClick, index }) {
           <img
             src={getYTThumb(project.videoId)}
             alt={project.title}
-            className="card-thumbnail object-cover w-full h-full"
+            className="card-thumbnail object-cover w-full h-full transform transition-transform duration-700 group-hover:scale-105"
             loading="lazy"
             onError={(e) => {
               e.target.src = `https://img.youtube.com/vi/${project.videoId}/hqdefault.jpg`;
             }}
           />
         ) : (
-          <div className="absolute inset-0 bg-bg-card-alt flex items-center justify-center">
+          <div className="absolute inset-0 bg-bg-card-alt flex items-center justify-center transform transition-transform duration-700 group-hover:scale-105">
             <div className="text-center">
               <div className="text-4xl mb-2">🎬</div>
               <p className="font-mono text-xs text-text-muted uppercase tracking-widest">Private Project</p>
@@ -120,12 +120,9 @@ function ProjectCard({ project, onClick, index }) {
           </div>
         )}
 
-        {/* Dark overlay on hover */}
-        <div className="absolute inset-0 bg-bg-primary/0 group-hover:bg-bg-primary/30 transition-all duration-500 z-10" />
-
         {/* Play button */}
         <div className="absolute inset-0 flex items-center justify-center z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          <div className="w-14 h-14 rounded-full border-2 border-white/80 flex items-center justify-center backdrop-blur-sm bg-black/20">
+          <div className="w-14 h-14 rounded-full border-2 border-white/80 flex items-center justify-center backdrop-blur-sm bg-black/40 shadow-xl">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="white" className="ml-0.5">
               <path d="M8 5v14l11-7z" />
             </svg>
