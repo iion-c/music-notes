@@ -17,7 +17,11 @@ export default function ProjectsManager() {
     try {
       const querySnapshot = await getDocs(collection(db, 'projects'));
       const projs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      // Sort by some logic if needed, for now just set
+      projs.sort((a, b) => {
+        const orderA = a.order !== undefined ? Number(a.order) : 0;
+        const orderB = b.order !== undefined ? Number(b.order) : 0;
+        return orderA - orderB;
+      });
       setProjects(projs);
     } catch (error) {
       console.error("Error fetching projects: ", error);
@@ -89,7 +93,8 @@ export default function ProjectsManager() {
       tags: [],
       platform: 'youtube',
       videoId: '',
-      videoUrl: ''
+      videoUrl: '',
+      order: 0
     });
     setIsEditing(true);
   };
@@ -124,6 +129,16 @@ export default function ProjectsManager() {
                 className="w-full bg-bg-primary border border-border-subtle rounded px-4 py-2 text-text-primary focus:border-accent-red outline-none"
                 value={currentProject.title}
                 onChange={(e) => setCurrentProject({...currentProject, title: e.target.value})}
+              />
+            </div>
+            <div>
+              <label className="block font-mono text-[10px] text-text-muted uppercase tracking-widest mb-2">Order (1 = First, 2 = Second, etc)</label>
+              <input 
+                type="number"
+                required
+                className="w-full bg-bg-primary border border-border-subtle rounded px-4 py-2 text-text-primary focus:border-accent-red outline-none"
+                value={currentProject.order || 0}
+                onChange={(e) => setCurrentProject({...currentProject, order: parseInt(e.target.value) || 0})}
               />
             </div>
             <div>
@@ -243,7 +258,10 @@ export default function ProjectsManager() {
               )}
             </div>
             <div className="p-4 flex-1">
-              <h3 className="font-display font-bold text-lg truncate">{proj.title}</h3>
+              <div className="flex justify-between items-start gap-2">
+                <h3 className="font-display font-bold text-lg truncate">{proj.title}</h3>
+                <span className="shrink-0 bg-bg-primary px-2 py-0.5 rounded text-xs font-mono border border-border-subtle text-text-muted">Order: {proj.order || 0}</span>
+              </div>
               <p className="font-mono text-[10px] text-text-muted uppercase mt-1 truncate">{proj.client}</p>
             </div>
             <div className="p-4 border-t border-border-subtle flex justify-between">

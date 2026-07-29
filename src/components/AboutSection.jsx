@@ -53,17 +53,20 @@ export default function AboutSection() {
           >
             {/* Photo frame */}
             <div className="relative rounded-sm overflow-hidden aspect-[4/5] bg-bg-card-alt border border-border-subtle flex items-center justify-center">
-              {/* Placeholder until photo is provided */}
-              <div className="flex flex-col items-center justify-center gap-4 text-center p-8">
-                <div
-                  className="w-20 h-20 rounded-full bg-bg-primary border border-border-subtle flex items-center justify-center"
-                >
-                  <span className="font-display text-3xl font-bold text-text-primary">MD</span>
+              {aboutData.imageUrl ? (
+                <img src={aboutData.imageUrl} alt="Matthew Delgado" className="w-full h-full object-cover" />
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-4 text-center p-8">
+                  <div
+                    className="w-20 h-20 rounded-full bg-bg-primary border border-border-subtle flex items-center justify-center"
+                  >
+                    <span className="font-display text-3xl font-bold text-text-primary">MD</span>
+                  </div>
+                  <p className="font-mono text-xs text-text-muted uppercase tracking-wider">
+                    Photo coming soon
+                  </p>
                 </div>
-                <p className="font-mono text-xs text-text-muted uppercase tracking-wider">
-                  Photo coming soon
-                </p>
-              </div>
+              )}
 
               {/* Corner accent */}
               <div className="absolute top-4 left-4 w-8 h-8 border-t-2 border-l-2 border-accent-red" />

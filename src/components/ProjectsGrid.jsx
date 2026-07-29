@@ -213,6 +213,13 @@ export default function ProjectsGrid() {
     ? projectsData
     : projectsData.filter((p) => p.category === activeFilter || (p.tags && p.tags.includes(activeFilter)));
 
+  // Sort by order field
+  filtered.sort((a, b) => {
+    const orderA = a.order !== undefined ? Number(a.order) : 0;
+    const orderB = b.order !== undefined ? Number(b.order) : 0;
+    return orderA - orderB;
+  });
+
   const featuredProject = filtered.length > 0 ? filtered[0] : null;
   const standardProjects = filtered.length > 1 ? filtered.slice(1) : [];
 

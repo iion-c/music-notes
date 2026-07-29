@@ -10,6 +10,7 @@ const defaultAboutData = {
 My work lives at the intersection of journalism and design. Inspired by the visual language of Vox, Johnny Harris, and investigative documentary filmmaking, I specialize in building narrative architecture through precise cuts, data-driven motion graphics, and immersive sound design.
 
 From the Venice Architecture Biennale to anti-corruption documentaries in Somalia, from Hong Kong film festival submissions to corporate leadership series in Australia — each project gets the same obsessive attention to detail.`,
+  imageUrl: '',
   ratingBadge: '4.8',
   fiverrUrl: 'https://www.fiverr.com',
   achievements: [
@@ -115,6 +116,16 @@ export default function AboutManager() {
           <div className="space-y-4 border-b border-border-subtle pb-6">
             <h2 className="font-ui text-lg font-semibold text-text-primary mb-4">Badge & Links</h2>
             <div className="grid grid-cols-2 gap-6">
+              <div className="col-span-2">
+                <label className="block font-mono text-[10px] text-text-muted uppercase tracking-widest mb-2">Profile Photo URL (Leave empty for default placeholder)</label>
+                <input 
+                  type="url"
+                  className="w-full bg-bg-primary border border-border-subtle rounded px-4 py-2 text-text-primary focus:border-accent-red outline-none placeholder:text-text-muted/40"
+                  placeholder="https://example.com/my-photo.jpg"
+                  value={data.imageUrl || ''}
+                  onChange={(e) => setData({...data, imageUrl: e.target.value})}
+                />
+              </div>
               <div>
                 <label className="block font-mono text-[10px] text-text-muted uppercase tracking-widest mb-2">Fiverr Rating Badge</label>
                 <input 

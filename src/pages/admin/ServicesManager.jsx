@@ -7,7 +7,6 @@ import { motion } from 'framer-motion';
 
 export default function ServicesManager() {
   const [services, setServices] = useState([]);
-  const [skills, setSkills] = useState('');
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [currentSrv, setCurrentSrv] = useState(null);
@@ -19,11 +18,6 @@ export default function ServicesManager() {
       let srvs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       srvs.sort((a, b) => parseInt(a.id) - parseInt(b.id));
       setServices(srvs);
-
-      const skillsSnap = await getDoc(doc(db, 'sections', 'skills'));
-      if (skillsSnap.exists()) {
-        setSkills(skillsSnap.data().list.join(', '));
-      }
     } catch (error) {
       console.error("Error fetching services: ", error);
     }
@@ -43,7 +37,6 @@ export default function ServicesManager() {
           const seedId = String(srv.id || Date.now() + i);
           await setDoc(doc(db, 'services', seedId), { ...srv, id: seedId });
         }
-        await setDoc(doc(db, 'sections', 'skills'), { list: localSkills });
         await fetchData();
       } catch (err) {
         console.error(err);
@@ -69,16 +62,6 @@ export default function ServicesManager() {
     } catch (err) {
       console.error("Error saving document: ", err);
       alert('Failed to save service');
-    }
-  };
-
-  const handleSaveSkills = async () => {
-    try {
-      const skillsArray = skills.split(',').map(s => s.trim()).filter(Boolean);
-      await setDoc(doc(db, 'sections', 'skills'), { list: skillsArray });
-      alert('Skills updated successfully');
-    } catch (err) {
-      console.error(err);
     }
   };
 
@@ -253,24 +236,6 @@ export default function ServicesManager() {
             <p className="font-ui text-sm text-text-muted mb-4 line-clamp-2">{srv.description}</p>
           </motion.div>
         ))}
-      </div>
-
-      {/* Skills Marquee Editor */}
-      <div className="bg-bg-card border border-border-subtle rounded-lg p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display text-xl font-bold text-text-primary">Software Stack (Marquee)</h2>
-          <button onClick={handleSaveSkills} className="flex items-center gap-2 px-4 py-2 bg-bg-primary border border-border-subtle text-text-primary font-semibold rounded hover:border-accent-red transition-colors text-sm">
-            <Save size={14} /> Save Marquee
-          </button>
-        </div>
-        <p className="font-mono text-xs text-text-muted mb-4 uppercase tracking-widest">Comma separated list of tools</p>
-        <textarea 
-          rows="3"
-          className="w-full bg-bg-primary border border-border-subtle rounded px-4 py-2 text-text-primary focus:border-accent-red outline-none font-ui"
-          value={skills}
-          onChange={(e) => setSkills(e.target.value)}
-          placeholder="Premiere Pro, After Effects, DaVinci Resolve..."
-        />
       </div>
     </div>
   );

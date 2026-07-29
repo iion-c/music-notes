@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { REVIEWS as localReviews, STATS } from '../data/portfolio';
 import { useCountUp } from '../hooks/useScrollReveal';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 // Star rating component
@@ -32,6 +32,7 @@ function StatCounter({ stat }) {
 
 export default function ReviewsSection() {
   const [reviewsData, setReviewsData] = useState([]);
+  const [heroStats, setHeroStats] = useState([]);
 
   useEffect(() => {
     const fetchReviews = async () => {
@@ -47,7 +48,28 @@ export default function ReviewsSection() {
         setReviewsData(localReviews);
       }
     };
+
+    const fetchHeroStats = async () => {
+      try {
+        const docSnap = await getDoc(doc(db, 'sections', 'hero'));
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setHeroStats([
+            { value: parseFloat(data.stat1Value), suffix: data.stat1Value.replace(/[0-9.]/g, ''), decimals: data.stat1Value.includes('.') ? 1 : 0, label: data.stat1Label },
+            { value: parseFloat(data.stat2Value), suffix: data.stat2Value.replace(/[0-9.]/g, ''), decimals: data.stat2Value.includes('.') ? 1 : 0, label: data.stat2Label },
+            { value: parseFloat(data.stat3Value), suffix: data.stat3Value.replace(/[0-9.]/g, ''), decimals: data.stat3Value.includes('.') ? 1 : 0, label: data.stat3Label },
+          ]);
+        } else {
+          setHeroStats(STATS);
+        }
+      } catch (err) {
+        console.error("Failed to load hero stats", err);
+        setHeroStats(STATS);
+      }
+    };
+
     fetchReviews();
+    fetchHeroStats();
   }, []);
 
   // Duplicate reviews for seamless infinite scrolling
@@ -77,7 +99,7 @@ export default function ReviewsSection() {
 
         {/* Stats bar */}
         <div className="grid grid-cols-3 gap-6 mb-24 p-8 bg-bg-card border border-border-subtle rounded-sm max-w-4xl mx-auto reveal-up" data-delay="150">
-          {STATS.map((stat) => (
+          {heroStats.map((stat) => (
             <StatCounter key={stat.label} stat={stat} />
           ))}
         </div>
