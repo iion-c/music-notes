@@ -54,7 +54,15 @@ export default function AboutSection() {
             {/* Photo frame */}
             <div className="relative rounded-sm overflow-hidden aspect-[4/5] bg-bg-card-alt border border-border-subtle flex items-center justify-center">
               {aboutData.imageUrl ? (
-                <img src={aboutData.imageUrl} alt="Matthew Delgado" className="w-full h-full object-cover" />
+                <img 
+                  src={
+                    aboutData.imageUrl.includes('drive.google.com/file/d/') 
+                      ? `https://drive.google.com/uc?export=view&id=${aboutData.imageUrl.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1]}`
+                      : aboutData.imageUrl
+                  } 
+                  alt="Matthew Delgado" 
+                  className="w-full h-full object-cover" 
+                />
               ) : (
                 <div className="flex flex-col items-center justify-center gap-4 text-center p-8">
                   <div
