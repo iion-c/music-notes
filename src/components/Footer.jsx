@@ -1,6 +1,36 @@
+import { useState, useEffect } from 'react';
 import { ArrowUp } from 'lucide-react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+
+const DEFAULT_FOOTER = {
+  tagline: 'Storytelling is an act of precision. Elevating documentaries, video essays, and explainers.',
+  email: 'Matthewdelg@gmail.com',
+  whatsapp: '+57 3152459216',
+  socials: [
+    { platform: 'Fiverr', url: 'https://www.fiverr.com/' },
+    { platform: 'LinkedIn', url: 'https://linkedin.com/' },
+    { platform: 'Vimeo', url: 'https://vimeo.com/' }
+  ]
+};
 
 export default function Footer() {
+  const [footerData, setFooterData] = useState(DEFAULT_FOOTER);
+
+  useEffect(() => {
+    const fetchFooter = async () => {
+      try {
+        const docSnap = await getDoc(doc(db, 'sections', 'footer'));
+        if (docSnap.exists()) {
+          setFooterData(docSnap.data());
+        }
+      } catch (err) {
+        console.error("Failed to load footer data", err);
+      }
+    };
+    fetchFooter();
+  }, []);
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -19,11 +49,23 @@ export default function Footer() {
               </span>
             </div>
             <p className="font-editorial italic text-text-muted text-base max-w-sm leading-relaxed mb-6">
-              Storytelling is an act of precision. Elevating documentaries, video essays, and explainers.
+              {footerData.tagline}
             </p>
-            <a href="mailto:Matthewdelg@gmail.com" className="font-mono text-sm text-text-primary hover:text-accent-red transition-colors duration-200">
-              Matthewdelg@gmail.com
-            </a>
+            <div className="flex flex-col gap-2">
+              <a href={`mailto:${footerData.email}`} className="font-mono text-sm text-text-primary hover:text-accent-red transition-colors duration-200">
+                {footerData.email}
+              </a>
+              {footerData.whatsapp && (
+                <a 
+                  href={`https://wa.me/${footerData.whatsapp.replace(/\D/g,'')}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="font-mono text-sm text-text-primary hover:text-accent-red transition-colors duration-200 flex items-center gap-2"
+                >
+                  WhatsApp: {footerData.whatsapp}
+                </a>
+              )}
+            </div>
           </div>
 
           {/* Quick Links */}
@@ -41,21 +83,13 @@ export default function Footer() {
           <div>
             <h4 className="font-mono text-[10px] uppercase tracking-widest text-text-muted mb-6">Connect</h4>
             <ul className="space-y-3 font-ui text-sm">
-              <li>
-                <a href="https://www.fiverr.com/" target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-text-primary transition-colors">
-                  Fiverr
-                </a>
-              </li>
-              <li>
-                <a href="https://linkedin.com/" target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-text-primary transition-colors">
-                  LinkedIn
-                </a>
-              </li>
-              <li>
-                <a href="https://vimeo.com/" target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-text-primary transition-colors">
-                  Vimeo
-                </a>
-              </li>
+              {footerData.socials?.map((social, idx) => (
+                <li key={idx}>
+                  <a href={social.url} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-text-primary transition-colors">
+                    {social.platform}
+                  </a>
+                </li>
+              ))}
             </ul>
           </div>
         </div>

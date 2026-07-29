@@ -9,6 +9,7 @@ import HeroManager from './pages/admin/HeroManager';
 import ExperienceManager from './pages/admin/ExperienceManager';
 import ServicesManager from './pages/admin/ServicesManager';
 import AboutManager from './pages/admin/AboutManager';
+import FooterManager from './pages/admin/FooterManager';
 import CustomCursor from './components/CustomCursor';
 
 // Protected Route Wrapper
@@ -42,6 +43,7 @@ export default function App() {
             <Route path="experience" element={<ExperienceManager />} />
             <Route path="projects" element={<ProjectsManager />} />
             <Route path="reviews" element={<ReviewsManager />} />
+            <Route path="footer" element={<FooterManager />} />
           </Route>
         </Routes>
       </Router>

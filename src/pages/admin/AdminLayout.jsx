@@ -23,6 +23,7 @@ export default function AdminLayout() {
     { name: 'Experience', path: '/admin/experience', icon: Briefcase },
     { name: 'Reviews', path: '/admin/reviews', icon: MessageSquare },
     { name: 'About & Links', path: '/admin/about', icon: User },
+    { name: 'Footer', path: '/admin/footer', icon: LayoutDashboard },
   ];
 
   return (
