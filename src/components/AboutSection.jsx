@@ -57,7 +57,7 @@ export default function AboutSection() {
                 <img 
                   src={
                     aboutData.imageUrl.includes('drive.google.com/file/d/') 
-                      ? `https://drive.google.com/uc?export=view&id=${aboutData.imageUrl.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1]}`
+                      ? `https://drive.google.com/thumbnail?id=${aboutData.imageUrl.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1]}&sz=w1000`
                       : aboutData.imageUrl
                   } 
                   alt="Matthew Delgado" 
