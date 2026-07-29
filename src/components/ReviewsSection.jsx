@@ -49,7 +49,7 @@ export default function ReviewsSection() {
 
   return (
     <section id="reviews" className="py-24 md:py-32 px-6 bg-bg-primary">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-[1600px] mx-auto">
 
         {/* Section header */}
         <div className="mb-16 text-center">

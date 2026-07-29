@@ -8,7 +8,7 @@ export default function ExperienceTimeline() {
 
   return (
     <section id="services" className="py-24 md:py-32 px-6 bg-bg-card">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-[1200px] mx-auto">
 
         {/* Section header */}
         <div className="mb-16">

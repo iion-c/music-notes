@@ -48,7 +48,7 @@ export default function Navbar() {
           scrolled ? 'navbar-blur py-3' : 'py-5 bg-transparent'
         }`}
       >
-        <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
+        <div className="max-w-[1600px] mx-auto px-6 flex items-center justify-between">
           {/* Logo */}
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
@@ -120,7 +120,7 @@ export default function Navbar() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-30 bg-bg-primary/98 flex flex-col items-center justify-center gap-8 md:hidden"
+            className="fixed inset-0 z-40 bg-bg-primary/95 backdrop-blur-xl flex flex-col items-center justify-center gap-8 md:hidden"
           >
             {NAV_LINKS.map((link, i) => (
               <motion.button

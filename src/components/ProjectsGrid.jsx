@@ -44,7 +44,7 @@ function VideoModal({ project, onClose }) {
       onClick={onClose}
     >
       <motion.div
-        className="relative w-full max-w-5xl mx-4"
+        className="relative w-full max-w-[1200px] mx-4"
         initial={{ scale: 0.94, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.94, opacity: 0 }}
@@ -208,8 +208,8 @@ export default function ProjectsGrid() {
     : PROJECTS.filter((p) => p.category === activeFilter || p.tags.includes(activeFilter));
 
   return (
-    <section id="work" className="py-24 md:py-32 px-6 bg-bg-primary">
-      <div className="max-w-7xl mx-auto">
+    <section id="work" className="py-24 md:py-32 px-6 lg:px-12 bg-bg-primary">
+      <div className="max-w-[1600px] mx-auto">
 
         {/* Section header */}
         <div className="mb-16">
@@ -249,7 +249,7 @@ export default function ProjectsGrid() {
         </div>
 
         {/* Projects grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6 md:gap-8">
           <AnimatePresence mode="popLayout">
             {filtered.map((project, i) => (
               <ProjectCard

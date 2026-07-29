@@ -10,7 +10,7 @@ export default function AboutSection() {
       {/* Ambient orb */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-accent-red/4 rounded-full blur-[120px] pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-[1600px] mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-20 items-center">
 
           {/* Photo placeholder */}

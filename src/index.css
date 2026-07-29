@@ -224,7 +224,7 @@
    VIDEO MODAL
    ============================================================ */
 .modal-backdrop {
-  @apply fixed inset-0 z-50 flex items-center justify-center;
+  @apply fixed inset-0 z-[60] flex items-center justify-center;
   background: rgba(0, 0, 0, 0.94);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
