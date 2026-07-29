@@ -6,8 +6,8 @@ const VIDEO_TYPES = ['Documentary', 'Vox-Style Explainer', 'Commercial / Social 
 const DURATIONS = ['Under 30 minutes of raw footage', '30 min – 2 hours', '2 – 5 hours', '5+ hours'];
 const BUDGETS = ['Under $500', '$500 – $1,500', '$1,500 – $3,000', '$3,000+', 'Let\'s discuss'];
 
-// Formspree endpoint — replace with actual endpoint after setup
-const FORMSPREE_URL = 'https://formspree.io/f/YOUR_FORM_ID';
+// Formspree endpoint
+const FORMSPREE_URL = 'https://formspree.io/f/xojgbpdb';
 
 export default function ContactForm() {
   const [form, setForm] = useState({
