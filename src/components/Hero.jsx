@@ -50,19 +50,13 @@ export default function Hero() {
           className="absolute inset-0 w-full h-full overflow-hidden"
           style={{ pointerEvents: 'none' }}
         >
-          {/* 
-            VIMEO SHOWREEL PLACEHOLDER
-            When Vimeo ID is available, replace this div with:
-            <iframe
-              src="https://player.vimeo.com/video/YOUR_VIMEO_ID?background=1&autoplay=1&loop=1&byline=0&title=0&muted=1"
-              className="absolute w-[177.77vh] min-w-full h-[56.25vw] min-h-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-              frameBorder="0"
-              allow="autoplay; fullscreen"
-              title="Matthew Delgado Showreel"
-            />
-          */}
-          {/* Placeholder gradient background (remove when Vimeo is ready) */}
-          <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-neutral-900 to-zinc-900" />
+          <iframe
+            src="https://player.vimeo.com/video/1214058780?background=1&autoplay=1&loop=1&byline=0&title=0&muted=1"
+            className="absolute w-[177.77vh] min-w-full h-[56.25vw] min-h-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+            frameBorder="0"
+            allow="autoplay; fullscreen; picture-in-picture"
+            title="Matthew Delgado Showreel"
+          />
           {/* Cinematic grid lines overlay */}
           <div
             className="absolute inset-0 opacity-[0.03]"
