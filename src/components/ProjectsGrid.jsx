@@ -20,6 +20,7 @@ function FeaturedProjectCard({ project, onClick }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.5 }}
+      whileHover="hover"
       className="group relative bg-black rounded-sm overflow-hidden border border-border-subtle cursor-pointer h-full min-h-[400px] md:min-h-[500px] flex flex-col justify-end md:col-span-2 lg:col-span-2 2xl:col-span-2"
       onClick={() => onClick(project)}
     >
@@ -28,46 +29,58 @@ function FeaturedProjectCard({ project, onClick }) {
         {project.platform === 'youtube' && project.videoId && (
           <iframe
             src={`https://www.youtube.com/embed/${project.videoId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${project.videoId}&modestbranding=1&playsinline=1`}
-            className="absolute w-[300%] h-[300%] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-60 group-hover:opacity-80 transition-opacity duration-700 object-cover"
+            className="absolute w-[300%] h-[300%] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-50 group-hover:opacity-70 transition-opacity duration-700 object-cover"
             frameBorder="0"
             allow="autoplay; encrypted-media"
             title={project.title}
             tabIndex="-1"
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent" />
       </div>
 
       {/* Info Overlay */}
       <div className="relative z-10 p-6 md:p-10 w-full md:w-2/3">
-        <div className="flex items-center gap-3 mb-4">
-          <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-accent-red/20 border border-accent-red/30">
-            <span className="w-1.5 h-1.5 rounded-full bg-accent-red avail-pulse" />
-            <span className="font-mono text-[9px] text-accent-red uppercase tracking-widest">Featured</span>
-          </span>
-          <div className="flex flex-wrap gap-2">
-            {project.tags.slice(0, 2).map(tag => (
-              <span key={tag} className="tag-pill border-white/20 text-white/80 bg-black/30 backdrop-blur-sm">{tag}</span>
-            ))}
+        <motion.div 
+          variants={{
+            hover: { y: -10 }
+          }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-accent-red/20 border border-accent-red/30">
+              <span className="w-1.5 h-1.5 rounded-full bg-accent-red avail-pulse" />
+              <span className="font-mono text-[9px] text-accent-red uppercase tracking-widest">Featured</span>
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {project.tags.slice(0, 2).map(tag => (
+                <span key={tag} className="tag-pill border-white/20 text-white/80 bg-black/30 backdrop-blur-sm">{tag}</span>
+              ))}
+            </div>
           </div>
-        </div>
-        
-        <h3 className="font-display text-3xl md:text-4xl font-bold text-white mb-2 group-hover:text-accent-red transition-colors duration-300">
-          {project.title}
-        </h3>
-        <p className="font-mono text-xs uppercase tracking-widest text-white/60 mb-4">
-          {project.client}
-        </p>
-        <p className="font-ui text-base text-white/80 line-clamp-3 mb-6">
-          {project.description}
-        </p>
-        
-        <button className="flex items-center gap-2 px-5 py-2.5 bg-white text-black font-ui font-semibold text-sm rounded hover:bg-accent-red hover:text-white transition-colors duration-300">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M8 5v14l11-7z" />
-          </svg>
-          Watch Full Video
-        </button>
+          
+          <h3 className="font-display text-3xl md:text-4xl font-bold text-white mb-2 group-hover:text-accent-red transition-colors duration-300">
+            {project.title}
+          </h3>
+          <p className="font-mono text-xs uppercase tracking-widest text-white/60 mb-4">
+            {project.client}
+          </p>
+          <p className="font-ui text-base text-white/80 line-clamp-3 mb-6">
+            {project.description}
+          </p>
+          
+          <motion.button 
+            variants={{
+              initial: { opacity: 0.5, y: 0 },
+              hover: { opacity: 1, y: 0, scale: 1.05 }
+            }}
+            transition={{ duration: 0.3 }}
+            className="flex items-center gap-2 px-6 py-3 bg-white text-black font-ui font-semibold text-sm rounded hover:bg-accent-red hover:text-white transition-colors duration-300 shadow-lg"
+          >
+            <Play size={15} fill="currentColor" />
+            Watch Full Video
+          </motion.button>
+        </motion.div>
       </div>
     </motion.div>
   );
