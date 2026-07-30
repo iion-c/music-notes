@@ -9,10 +9,15 @@ export default function CustomCursor() {
   const dotRef = useRef(null);
   const outlineRef = useRef(null);
 
+  // Detect touch-only devices — skip custom cursor entirely
+  const isTouchDevice = () =>
+    window.matchMedia('(pointer: coarse)').matches ||
+    !window.matchMedia('(pointer: fine)').matches;
+
   useEffect(() => {
     const dot = dotRef.current;
     const outline = outlineRef.current;
-    if (!dot || !outline) return;
+    if (!dot || !outline || isTouchDevice()) return;
 
     let mouseX = 0, mouseY = 0;
     let outlineX = 0, outlineY = 0;
@@ -48,7 +53,13 @@ export default function CustomCursor() {
 
     document.addEventListener('mousemove', onMouseMove);
 
-    // Attach to all interactive elements
+    // Force cursor:none on all interactive elements so system cursor never shows
+    const styleTag = document.createElement('style');
+    styleTag.id = 'custom-cursor-suppress';
+    styleTag.textContent = 'a, button, input, textarea, select, label, [role="button"], .project-card, [data-cursor-hover], [data-cursor-type] { cursor: none !important; }';
+    document.head.appendChild(styleTag);
+
+    // Attach hover listeners
     const hoverEls = document.querySelectorAll(
       'a, button, [data-cursor-hover], .project-card, [data-cursor-type]'
     );
@@ -64,8 +75,12 @@ export default function CustomCursor() {
         el.removeEventListener('mouseenter', onHoverIn);
         el.removeEventListener('mouseleave', onHoverOut);
       });
+      document.getElementById('custom-cursor-suppress')?.remove();
     };
   }, []);
+
+  // Don't render on touch devices
+  if (typeof window !== 'undefined' && isTouchDevice()) return null;
 
   return (
     <>
