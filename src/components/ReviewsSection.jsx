@@ -30,9 +30,122 @@ function StatCounter({ stat }) {
   );
 }
 
+// Single review card (shared between carousel and marquee)
+function ReviewCard({ review }) {
+  return (
+    <div className="relative group h-full">
+      <div className="absolute -inset-0.5 bg-gradient-to-r from-accent-red/60 via-red-400/60 to-accent-red/60 rounded-sm opacity-0 group-hover:opacity-100 blur-md transition duration-500 group-hover:duration-200" />
+      <div className="relative h-full bg-bg-card border border-border-subtle rounded-sm p-8 flex flex-col transition-all duration-300 group-hover:-translate-y-1">
+        <Stars count={review.rating} />
+        <blockquote className="mt-6 mb-8 font-editorial italic text-text-muted text-base leading-relaxed flex-1 group-hover:text-text-primary transition-colors duration-300">
+          "{review.quote}"
+        </blockquote>
+        <div className="border-t border-border-subtle pt-6">
+          <p className="font-display font-bold text-text-primary">{review.name}</p>
+          <p className="font-ui text-sm text-text-muted mt-1">{review.title}</p>
+          <div className="flex items-center gap-2 mt-2">
+            <span className="font-mono text-[10px] text-accent-red uppercase tracking-widest">{review.platform}</span>
+            <span className="text-border-subtle">·</span>
+            <span className="font-mono text-[10px] text-text-muted uppercase tracking-widest">{review.location}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Mobile swipeable carousel
+function MobileCarousel({ reviews }) {
+  const [current, setCurrent] = useState(0);
+  const [startX, setStartX] = useState(null);
+  const [dragging, setDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState(0);
+
+  const goTo = (index) => {
+    setCurrent(Math.max(0, Math.min(index, reviews.length - 1)));
+  };
+
+  const handleTouchStart = (e) => {
+    setStartX(e.touches[0].clientX);
+    setDragging(true);
+    setDragOffset(0);
+  };
+
+  const handleTouchMove = (e) => {
+    if (!dragging || startX === null) return;
+    setDragOffset(e.touches[0].clientX - startX);
+  };
+
+  const handleTouchEnd = () => {
+    if (dragOffset < -50) goTo(current + 1);
+    else if (dragOffset > 50) goTo(current - 1);
+    setDragging(false);
+    setDragOffset(0);
+    setStartX(null);
+  };
+
+  return (
+    <div className="relative overflow-hidden px-6">
+      <div
+        className="flex transition-transform duration-300 ease-out"
+        style={{ transform: `translateX(calc(-${current * 100}% + ${dragOffset}px))` }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        {reviews.map((review, i) => (
+          <div key={`${review.name}-${i}`} className="w-full shrink-0 px-2">
+            <ReviewCard review={review} />
+          </div>
+        ))}
+      </div>
+
+      {/* Dot indicators */}
+      <div className="flex justify-center gap-2 mt-6">
+        {reviews.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => goTo(i)}
+            className={`h-2 rounded-full transition-all duration-300 ${
+              i === current ? 'bg-accent-red w-5' : 'bg-border-subtle w-2'
+            }`}
+            aria-label={`Go to review ${i + 1}`}
+          />
+        ))}
+      </div>
+
+      {/* Prev / Next arrows */}
+      <div className="flex justify-between mt-4 px-2">
+        <button
+          onClick={() => goTo(current - 1)}
+          disabled={current === 0}
+          className="text-text-muted disabled:opacity-20 transition-opacity px-3 py-1 font-mono text-xs uppercase tracking-widest hover:text-accent-red"
+        >
+          ← Prev
+        </button>
+        <button
+          onClick={() => goTo(current + 1)}
+          disabled={current === reviews.length - 1}
+          className="text-text-muted disabled:opacity-20 transition-opacity px-3 py-1 font-mono text-xs uppercase tracking-widest hover:text-accent-red"
+        >
+          Next →
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function ReviewsSection() {
   const [reviewsData, setReviewsData] = useState([]);
   const [heroStats, setHeroStats] = useState([]);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.matchMedia('(pointer: coarse)').matches);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     const fetchReviews = async () => {
@@ -72,7 +185,7 @@ export default function ReviewsSection() {
     fetchHeroStats();
   }, []);
 
-  // Duplicate reviews for seamless infinite scrolling
+  // Duplicate reviews for seamless infinite scrolling (desktop only)
   const marqueeReviews = [...reviewsData, ...reviewsData, ...reviewsData];
 
   return (
@@ -105,45 +218,29 @@ export default function ReviewsSection() {
         </div>
       </div>
 
-      {/* Infinite Marquee */}
-      <div className="relative w-full reveal-up" data-delay="200">
-        {/* Fade edges */}
-        <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-bg-primary to-transparent z-10 pointer-events-none" />
-        <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-bg-primary to-transparent z-10 pointer-events-none" />
-
-        <div className="flex review-marquee-track hover:[animation-play-state:paused] py-4">
-          {marqueeReviews.map((review, i) => (
-            <div
-              key={`${review.name}-${i}`}
-              className="relative w-[350px] md:w-[450px] shrink-0 mx-4 group cursor-default"
-            >
-              {/* Glowing animated background that appears on hover */}
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-accent-red/60 via-red-400/60 to-accent-red/60 rounded-sm opacity-0 group-hover:opacity-100 blur-md transition duration-500 group-hover:duration-200" />
-              
-              {/* Actual card content */}
-              <div className="relative h-full bg-bg-card border border-border-subtle rounded-sm p-8 flex flex-col transition-all duration-300 group-hover:-translate-y-1">
-                <Stars count={review.rating} />
-                
-                <blockquote className="mt-6 mb-8 font-editorial italic text-text-muted text-base leading-relaxed flex-1 group-hover:text-text-primary transition-colors duration-300">
-                  "{review.quote}"
-                </blockquote>
-                
-                <div className="border-t border-border-subtle pt-6">
-                  <p className="font-display font-bold text-text-primary">{review.name}</p>
-                  <p className="font-ui text-sm text-text-muted mt-1">{review.title}</p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className="font-mono text-[10px] text-accent-red uppercase tracking-widest">
-                      {review.platform}
-                    </span>
-                    <span className="text-border-subtle">·</span>
-                    <span className="font-mono text-[10px] text-text-muted uppercase tracking-widest">{review.location}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
+      {/* Mobile: swipeable carousel | Desktop: infinite marquee */}
+      {isMobile ? (
+        <div className="reveal-up" data-delay="200">
+          <MobileCarousel reviews={reviewsData} />
         </div>
-      </div>
+      ) : (
+        <div className="relative w-full reveal-up" data-delay="200">
+          {/* Fade edges */}
+          <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-bg-primary to-transparent z-10 pointer-events-none" />
+          <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-bg-primary to-transparent z-10 pointer-events-none" />
+
+          <div className="flex review-marquee-track hover:[animation-play-state:paused] py-4">
+            {marqueeReviews.map((review, i) => (
+              <div
+                key={`${review.name}-${i}`}
+                className="w-[350px] md:w-[450px] shrink-0 mx-4 cursor-default"
+              >
+                <ReviewCard review={review} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </section>
   );
 }
