@@ -32,7 +32,7 @@ export function renderStaveToContainer(
   }
 
   if (measuresToRender.length === 0) {
-    container.innerHTML = '<div class="p-4 text-slate-400 text-center italic">No hay compases seleccionados para desplegar</div>';
+    container.innerHTML = '<div class="p-4 text-amber-800/60 text-center italic text-xs">No hay compases seleccionados para desplegar</div>';
     return;
   }
 
@@ -52,6 +52,8 @@ export function renderStaveToContainer(
   renderer.resize(rendererWidth * scale, rendererHeight * scale);
   const context = renderer.getContext();
   context.scale(scale, scale);
+  context.setStrokeStyle('#1e293b');
+  context.setFillStyle('#1e293b');
 
   let currentX = 15;
   let currentY = 10;
@@ -106,6 +108,9 @@ export function renderStaveToContainer(
             duration: durationStr
           });
 
+          // Estilo predeterminado de notas en negro estucado
+          staveNote.setStyle({ fillStyle: '#1e293b', strokeStyle: '#1e293b' });
+
           // Agregar alteraciones
           if (!n.isRest && n.accidental) {
             const accSymbol = n.accidental === 'n' ? 'n' : n.accidental;
@@ -125,7 +130,7 @@ export function renderStaveToContainer(
             options.activeNotePos.noteIndex === noteIndex;
 
           if (isNoteActive) {
-            staveNote.setStyle({ fillStyle: '#38bdf8', strokeStyle: '#38bdf8' });
+            staveNote.setStyle({ fillStyle: '#0284c7', strokeStyle: '#0284c7' });
           }
 
           vexNotes.push(staveNote);
@@ -145,7 +150,10 @@ export function renderStaveToContainer(
         new Formatter().joinVoices([voice]).format([voice], currentMeasureWidth - (isFirstInLine ? 80 : 30));
 
         voice.draw(context, stave);
-        beams.forEach((beam: any) => beam.setContext(context).draw());
+        beams.forEach((beam: any) => {
+          beam.setStyle({ fillStyle: '#1e293b', strokeStyle: '#1e293b' });
+          beam.setContext(context).draw();
+        });
 
       } catch (err) {
         console.warn(`Error al formatear compás ${measure.measureNumber}:`, err);
@@ -161,7 +169,7 @@ export function renderStaveToContainer(
       if (ha.romanNumeral) {
         context.save();
         context.setFont("Outfit, Inter, sans-serif", 13, "bold");
-        context.setFillStyle("#38bdf8"); // Cyan resplandeciente
+        context.setFillStyle("#0284c7"); // Azul académico
         context.fillText(ha.romanNumeral, textX, textY);
         context.restore();
       }
@@ -169,7 +177,7 @@ export function renderStaveToContainer(
       if (ha.figuredBass) {
         context.save();
         context.setFont("Outfit, Inter, sans-serif", 10, "normal");
-        context.setFillStyle("#94a3b8");
+        context.setFillStyle("#64748b");
         context.fillText(ha.figuredBass, textX + 18, textY);
         context.restore();
       }
@@ -177,7 +185,7 @@ export function renderStaveToContainer(
       if (ha.chordName) {
         context.save();
         context.setFont("Outfit, Inter, sans-serif", 11, "bold");
-        context.setFillStyle("#a78bfa"); // Púrpura suave
+        context.setFillStyle("#7c3aed"); // Púrpura discreto
         context.fillText(ha.chordName, currentX + 20, currentY - 5);
         context.restore();
       }

@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Play, Square, Camera, ChevronDown, ChevronUp, Plus, Trash2, 
-  Settings, Music, Sliders, Copy, Download, Tag, FileText, PenTool 
+  Settings, Music, Sliders, Copy, PenTool 
 } from 'lucide-react';
-import { 
+import type { 
   StaveBlock, MeasureData, MusicNoteItem, ClefType, 
-  CLEF_NAMES, KEY_SIGNATURES, TIME_SIGNATURES, DURATION_NAMES, DurationType, PitchAccidental 
+  DurationType, PitchAccidental 
 } from '../../types/music';
+import { CLEF_NAMES, KEY_SIGNATURES, TIME_SIGNATURES, DURATION_NAMES } from '../../types/music';
 import { renderStaveToContainer } from '../../services/vexRender';
 import { audioSynth } from '../../services/audioSynth';
 import { downloadElementScreenshot, copyElementToClipboard } from '../../services/screenshot';
@@ -29,8 +30,9 @@ export const StaveBlockComponent: React.FC<Props> = ({
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [activeNotePos, setActiveNotePos] = useState<{ measureIndex: number; noteIndex: number } | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showInspector, setShowInspector] = useState(false);
+
+  // Menús desplegables (Dropdowns)
+  const [activeDropdown, setActiveDropdown] = useState<'settings' | 'notes' | 'analysis' | null>(null);
   const [selectedMeasureIdx, setSelectedMeasureIdx] = useState<number>(0);
 
   // Estado temporal para edición de nota
@@ -49,7 +51,6 @@ export const StaveBlockComponent: React.FC<Props> = ({
     }
   }, [staveBlock, activeNotePos]);
 
-  // Manejar cambio de tamaño de ventana para hacer la partitura responsiva
   useEffect(() => {
     const handleResize = () => {
       if (containerRef.current && !staveBlock.isCollapsed) {
@@ -96,9 +97,8 @@ export const StaveBlockComponent: React.FC<Props> = ({
     if (blockCardRef.current) {
       const ok = await copyElementToClipboard(blockCardRef.current);
       if (ok && onInsertSnapshotCard) {
-        // Opción de insertar como tarjeta
         const canvas = await import('html2canvas');
-        const rendered = await canvas.default(blockCardRef.current, { scale: 2, backgroundColor: '#0f172a' });
+        const rendered = await canvas.default(blockCardRef.current, { scale: 2, backgroundColor: '#fdfbf7' });
         onInsertSnapshotCard(rendered.toDataURL('image/png'));
       }
     }
@@ -147,7 +147,6 @@ export const StaveBlockComponent: React.FC<Props> = ({
     measure.notes = [...measure.notes, newNote];
     measures[selectedMeasureIdx] = measure;
 
-    // Probar sonido al insertar nota
     if (!isRest) {
       audioSynth.playNote(newNote);
     }
@@ -155,7 +154,7 @@ export const StaveBlockComponent: React.FC<Props> = ({
     onUpdate({ ...staveBlock, measures, updatedAt: Date.now() });
   };
 
-  // Eliminar última nota del compás seleccionado
+  // Eliminar última nota
   const handleRemoveLastNoteFromSelectedMeasure = () => {
     const measures = [...staveBlock.measures];
     if (selectedMeasureIdx < 0 || selectedMeasureIdx >= measures.length) return;
@@ -182,17 +181,21 @@ export const StaveBlockComponent: React.FC<Props> = ({
 
   const selectedMeasure = staveBlock.measures[selectedMeasureIdx];
 
+  const toggleDropdown = (dropdown: 'settings' | 'notes' | 'analysis') => {
+    setActiveDropdown(prev => prev === dropdown ? null : dropdown);
+  };
+
   return (
     <div 
       ref={blockCardRef}
-      className="my-4 rounded-xl border border-slate-700/60 bg-slate-900/90 shadow-xl backdrop-blur-md overflow-hidden transition-all duration-200"
+      className="my-5 rounded-2xl border border-amber-200/80 bg-[#fdfbf7] shadow-lg shadow-amber-950/5 overflow-hidden transition-all duration-200"
     >
-      {/* Header del Pentagrama Desplegable */}
-      <div className="flex flex-wrap items-center justify-between px-4 py-3 bg-gradient-to-r from-slate-800 to-slate-900 border-b border-slate-700/60 gap-2">
+      {/* Cabecera Estilo Cuaderno Académico */}
+      <div className="flex flex-wrap items-center justify-between px-4 py-3 bg-[#f8f5ee] border-b border-amber-200/60 gap-2">
         <div className="flex items-center gap-3">
           <button 
             onClick={toggleCollapse}
-            className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+            className="p-1.5 rounded-lg bg-amber-100/80 text-amber-900 hover:bg-amber-200 transition-colors"
             title={staveBlock.isCollapsed ? 'Desplegar Pentagrama' : 'Colapsar Pentagrama'}
           >
             {staveBlock.isCollapsed ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
@@ -203,20 +206,20 @@ export const StaveBlockComponent: React.FC<Props> = ({
               type="text" 
               value={staveBlock.title}
               onChange={(e) => onUpdate({ ...staveBlock, title: e.target.value, updatedAt: Date.now() })}
-              className="bg-transparent text-base font-semibold text-white focus:outline-none focus:border-b focus:border-cyan-400"
+              className="bg-transparent text-base font-bold text-slate-900 focus:outline-none focus:border-b-2 focus:border-amber-500"
               placeholder="Título del Pentagrama..."
             />
-            <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-slate-400">
-              <span className="px-2 py-0.5 rounded bg-slate-800 text-cyan-400 font-mono">
+            <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs">
+              <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 font-semibold border border-amber-200">
                 {CLEF_NAMES[staveBlock.clef]}
               </span>
-              <span className="px-2 py-0.5 rounded bg-slate-800 text-emerald-400 font-mono">
+              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 font-semibold border border-emerald-200">
                 {staveBlock.timeSignature}
               </span>
-              <span className="px-2 py-0.5 rounded bg-slate-800 text-indigo-400 font-mono">
-                Tonalidad: {staveBlock.keySignature}
+              <span className="px-2 py-0.5 rounded-full bg-sky-100 text-sky-900 font-semibold border border-sky-200">
+                Ton: {staveBlock.keySignature}
               </span>
-              <span className="px-2 py-0.5 rounded bg-slate-800 text-amber-400 font-mono">
+              <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-mono">
                 {staveBlock.displayRange.mode === 'custom' 
                   ? `Compases ${staveBlock.displayRange.startMeasure || 1}-${staveBlock.displayRange.endMeasure || staveBlock.measures.length}`
                   : `${staveBlock.measures.length} compases`}
@@ -227,24 +230,24 @@ export const StaveBlockComponent: React.FC<Props> = ({
 
         {/* Acciones principales de la cabecera */}
         <div className="flex items-center gap-1.5">
-          {/* Reproductor de Audio */}
+          {/* Reproductor Synthesizer */}
           <button
             onClick={handleTogglePlay}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium text-xs transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-all ${
               isPlaying 
-                ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/30 animate-pulse' 
-                : 'bg-cyan-600 text-white hover:bg-cyan-500 shadow-md shadow-cyan-600/20'
+                ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30 animate-pulse' 
+                : 'bg-amber-600 text-white hover:bg-amber-500 shadow-md shadow-amber-600/20'
             }`}
-            title={isPlaying ? 'Detener Reproducción' : 'Reproducir Pentagrama'}
+            title={isPlaying ? 'Detener' : 'Escuchar Pentagrama'}
           >
             {isPlaying ? <Square size={14} /> : <Play size={14} />}
             <span>{isPlaying ? 'Detener' : 'Escuchar'}</span>
           </button>
 
-          {/* Captura de Pantalla */}
+          {/* Captura de Pantalla PNG */}
           <button
             onClick={handleTakeScreenshot}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 text-xs transition-colors"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-100/80 text-amber-900 hover:bg-amber-200 text-xs font-semibold transition-colors"
             title="Descargar captura PNG"
           >
             <Camera size={14} />
@@ -253,34 +256,16 @@ export const StaveBlockComponent: React.FC<Props> = ({
 
           <button
             onClick={handleCopyScreenshot}
-            className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs transition-colors"
-            title="Copiar imagen al portapapeles o insertar tarjeta"
+            className="flex items-center gap-1 px-2 py-1.5 rounded-xl bg-amber-100/80 text-amber-900 hover:bg-amber-200 text-xs transition-colors"
+            title="Copiar imagen al portapapeles"
           >
             <Copy size={14} />
-          </button>
-
-          {/* Menú de Configuración de Compases */}
-          <button
-            onClick={() => setShowSettings(!showSettings)}
-            className={`p-1.5 rounded-lg text-xs transition-colors ${showSettings ? 'bg-cyan-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
-            title="Ajustar Clave, Métrica, Compases"
-          >
-            <Settings size={15} />
-          </button>
-
-          {/* Editor de Notas */}
-          <button
-            onClick={() => setShowInspector(!showInspector)}
-            className={`p-1.5 rounded-lg text-xs transition-colors ${showInspector ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
-            title="Editor de notas y análisis armónico"
-          >
-            <Sliders size={15} />
           </button>
 
           {onDelete && (
             <button
               onClick={onDelete}
-              className="p-1.5 rounded-lg bg-slate-800/80 text-rose-400 hover:bg-rose-950 hover:text-rose-200 text-xs transition-colors"
+              className="p-1.5 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 text-xs transition-colors border border-rose-200"
               title="Eliminar Pentagrama"
             >
               <Trash2 size={15} />
@@ -289,15 +274,56 @@ export const StaveBlockComponent: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Menú Desplegable de Configuración de Pentagramas y Selección de Compases */}
-      {showSettings && (
-        <div className="p-4 bg-slate-950/90 border-b border-slate-800 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+      {/* Menús Desplegables Contextuales (Dropdown Buttons Toolbar) */}
+      {!staveBlock.isCollapsed && (
+        <div className="px-4 py-2 bg-[#f6f2e8] border-b border-amber-200/60 flex flex-wrap items-center gap-2 text-xs">
+          <button
+            onClick={() => toggleDropdown('settings')}
+            className={`px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1.5 transition-all ${
+              activeDropdown === 'settings' 
+                ? 'bg-amber-600 text-white shadow-sm' 
+                : 'bg-[#fdfbf7] text-slate-700 hover:bg-amber-100 border border-amber-200'
+            }`}
+          >
+            <Settings size={14} />
+            <span>Clave & Compases ▾</span>
+          </button>
+
+          <button
+            onClick={() => toggleDropdown('notes')}
+            className={`px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1.5 transition-all ${
+              activeDropdown === 'notes' 
+                ? 'bg-amber-600 text-white shadow-sm' 
+                : 'bg-[#fdfbf7] text-slate-700 hover:bg-amber-100 border border-amber-200'
+            }`}
+          >
+            <Music size={14} />
+            <span>Añadir Notas ▾</span>
+          </button>
+
+          <button
+            onClick={() => toggleDropdown('analysis')}
+            className={`px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1.5 transition-all ${
+              activeDropdown === 'analysis' 
+                ? 'bg-amber-600 text-white shadow-sm' 
+                : 'bg-[#fdfbf7] text-slate-700 hover:bg-amber-100 border border-amber-200'
+            }`}
+          >
+            <PenTool size={14} />
+            <span>Análisis Armónico ▾</span>
+          </button>
+        </div>
+      )}
+
+      {/* Desplegable 1: Configuración de Clave, Métrica y Rango de Compases */}
+      {activeDropdown === 'settings' && !staveBlock.isCollapsed && (
+        <div className="p-4 bg-amber-50/90 border-b border-amber-200 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs animate-fade-in">
           <div>
-            <label className="block text-slate-400 mb-1 font-medium">Clave Musical</label>
+            <label className="block text-slate-700 mb-1 font-bold">Clave Musical</label>
             <select
               value={staveBlock.clef}
               onChange={(e) => onUpdate({ ...staveBlock, clef: e.target.value as ClefType, updatedAt: Date.now() })}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-500"
+              className="w-full bg-white border border-amber-300 rounded-xl p-2 text-slate-900 font-medium focus:outline-none focus:border-amber-500 shadow-sm"
             >
               {Object.entries(CLEF_NAMES).map(([key, name]) => (
                 <option key={key} value={key}>{name}</option>
@@ -306,11 +332,11 @@ export const StaveBlockComponent: React.FC<Props> = ({
           </div>
 
           <div>
-            <label className="block text-slate-400 mb-1 font-medium">Métrica (Compás)</label>
+            <label className="block text-slate-700 mb-1 font-bold">Métrica (Compás)</label>
             <select
               value={staveBlock.timeSignature}
               onChange={(e) => onUpdate({ ...staveBlock, timeSignature: e.target.value, updatedAt: Date.now() })}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-500"
+              className="w-full bg-white border border-amber-300 rounded-xl p-2 text-slate-900 font-medium focus:outline-none focus:border-amber-500 shadow-sm"
             >
               {TIME_SIGNATURES.map(ts => (
                 <option key={ts} value={ts}>{ts}</option>
@@ -319,11 +345,11 @@ export const StaveBlockComponent: React.FC<Props> = ({
           </div>
 
           <div>
-            <label className="block text-slate-400 mb-1 font-medium">Armadura de Clave</label>
+            <label className="block text-slate-700 mb-1 font-bold">Armadura de Clave</label>
             <select
               value={staveBlock.keySignature}
               onChange={(e) => onUpdate({ ...staveBlock, keySignature: e.target.value, updatedAt: Date.now() })}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-500"
+              className="w-full bg-white border border-amber-300 rounded-xl p-2 text-slate-900 font-medium focus:outline-none focus:border-amber-500 shadow-sm"
             >
               {KEY_SIGNATURES.map(ks => (
                 <option key={ks.code} value={ks.code}>{ks.name}</option>
@@ -332,7 +358,7 @@ export const StaveBlockComponent: React.FC<Props> = ({
           </div>
 
           <div>
-            <label className="block text-slate-400 mb-1 font-medium">Selección de Compases a Desplegar</label>
+            <label className="block text-slate-700 mb-1 font-bold">Selección de Compases a Desplegar</label>
             <select
               value={staveBlock.displayRange.mode}
               onChange={(e) => onUpdate({ 
@@ -344,7 +370,7 @@ export const StaveBlockComponent: React.FC<Props> = ({
                 },
                 updatedAt: Date.now() 
               })}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-500"
+              className="w-full bg-white border border-amber-300 rounded-xl p-2 text-slate-900 font-medium focus:outline-none focus:border-amber-500 shadow-sm"
             >
               <option value="all">Ver todos los compases ({staveBlock.measures.length})</option>
               <option value="custom">Personalizar rango de compases</option>
@@ -364,9 +390,9 @@ export const StaveBlockComponent: React.FC<Props> = ({
                       startMeasure: parseInt(e.target.value, 10) || 1
                     }
                   })}
-                  className="w-16 bg-slate-900 border border-slate-700 rounded p-1 text-center text-white"
+                  className="w-16 bg-white border border-amber-300 rounded-lg p-1 text-center font-bold text-slate-900"
                 />
-                <span className="text-slate-400">a</span>
+                <span className="text-slate-600 font-medium">a</span>
                 <input
                   type="number"
                   min={1}
@@ -379,7 +405,7 @@ export const StaveBlockComponent: React.FC<Props> = ({
                       endMeasure: parseInt(e.target.value, 10) || staveBlock.measures.length
                     }
                   })}
-                  className="w-16 bg-slate-900 border border-slate-700 rounded p-1 text-center text-white"
+                  className="w-16 bg-white border border-amber-300 rounded-lg p-1 text-center font-bold text-slate-900"
                 />
               </div>
             )}
@@ -387,23 +413,16 @@ export const StaveBlockComponent: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Cuerpo del Pentagrama SVG en VexFlow */}
-      {!staveBlock.isCollapsed && (
-        <div className="p-4 bg-slate-950 overflow-x-auto min-h-[170px] flex items-center justify-center">
-          <div ref={containerRef} className="w-full flex justify-center" />
-        </div>
-      )}
-
-      {/* Editor Interactivo de Notas y Análisis Armónico por Compás */}
-      {showInspector && !staveBlock.isCollapsed && (
-        <div className="p-4 bg-slate-900 border-t border-slate-800 text-xs">
-          <div className="flex flex-wrap items-center justify-between mb-3 pb-2 border-b border-slate-800">
+      {/* Desplegable 2: Añadir Notas al Compás */}
+      {activeDropdown === 'notes' && !staveBlock.isCollapsed && (
+        <div className="p-4 bg-amber-50/90 border-b border-amber-200 text-xs space-y-3 animate-fade-in">
+          <div className="flex items-center justify-between pb-2 border-b border-amber-200">
             <div className="flex items-center gap-2">
-              <span className="text-slate-300 font-semibold">Editar Compás:</span>
+              <span className="font-bold text-slate-800">Compás Activo:</span>
               <select
                 value={selectedMeasureIdx}
                 onChange={(e) => setSelectedMeasureIdx(parseInt(e.target.value, 10))}
-                className="bg-slate-800 border border-slate-700 rounded px-2.5 py-1 text-cyan-400 font-bold"
+                className="bg-white border border-amber-300 rounded-lg px-2.5 py-1 text-amber-900 font-bold shadow-sm"
               >
                 {staveBlock.measures.map((m, idx) => (
                   <option key={m.id} value={idx}>Compás {m.measureNumber}</option>
@@ -413,136 +432,127 @@ export const StaveBlockComponent: React.FC<Props> = ({
 
             <button
               onClick={handleAddMeasure}
-              className="flex items-center gap-1 px-3 py-1 rounded bg-cyan-600/80 hover:bg-cyan-500 text-white font-medium transition-colors"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold transition-colors shadow-sm"
             >
               <Plus size={14} />
-              <span>Añadir Compás</span>
+              <span>+ Nuevo Compás</span>
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Panel de notas */}
-            <div className="bg-slate-950/80 p-3 rounded-lg border border-slate-800">
-              <div className="font-semibold text-slate-300 mb-2">Agregar Notas al Compás {selectedMeasure?.measureNumber}</div>
-              
-              {/* Selección de altura */}
-              <div className="mb-3">
-                <label className="block text-slate-400 mb-1">Altura de Nota (Pitch):</label>
-                <div className="flex flex-wrap gap-1">
-                  {['c/4', 'd/4', 'e/4', 'f/4', 'g/4', 'a/4', 'b/4', 'c/5', 'e/5', 'g/5'].map(p => (
-                    <button
-                      key={p}
-                      onClick={() => setCurrentPitch(p)}
-                      className={`px-2 py-1 rounded font-mono ${currentPitch === p ? 'bg-cyan-500 text-black font-bold' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
-                    >
-                      {p.toUpperCase()}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Alteración */}
-              <div className="mb-3 flex items-center gap-3">
-                <span className="text-slate-400">Alteración:</span>
-                {(['', '#', 'b', 'n'] as PitchAccidental[]).map(acc => (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">Altura de Nota (Pitch):</label>
+              <div className="flex flex-wrap gap-1">
+                {['c/4', 'd/4', 'e/4', 'f/4', 'g/4', 'a/4', 'b/4', 'c/5', 'e/5'].map(p => (
                   <button
-                    key={acc || 'none'}
-                    onClick={() => setAccidental(acc)}
-                    className={`px-2 py-1 rounded font-mono ${accidental === acc ? 'bg-indigo-500 text-white' : 'bg-slate-800 text-slate-400'}`}
+                    key={p}
+                    onClick={() => setCurrentPitch(p)}
+                    className={`px-2 py-1 rounded-lg font-mono text-xs font-bold transition-colors ${
+                      currentPitch === p ? 'bg-amber-500 text-white shadow-sm' : 'bg-white text-slate-700 border border-amber-200 hover:bg-amber-100'
+                    }`}
                   >
-                    {acc === '' ? 'Natural' : acc === '#' ? 'Sostenido ♯' : acc === 'b' ? 'Bemol ♭' : 'Becuadro ♮'}
+                    {p.toUpperCase()}
                   </button>
                 ))}
               </div>
+            </div>
 
-              {/* Duración */}
-              <div className="mb-3">
-                <label className="block text-slate-400 mb-1">Duración (Figura):</label>
-                <div className="flex flex-wrap gap-1">
-                  {Object.entries(DURATION_NAMES).map(([durKey, info]) => (
-                    <button
-                      key={durKey}
-                      onClick={() => setCurrentDuration(durKey as DurationType)}
-                      className={`px-2.5 py-1 rounded flex items-center gap-1 ${currentDuration === durKey ? 'bg-emerald-500 text-black font-bold' : 'bg-slate-800 text-slate-300'}`}
-                    >
-                      <span className="text-sm">{info.symbol}</span>
-                      <span>{info.name}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleAddNoteToSelectedMeasure}
-                  className="flex-1 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white font-medium rounded flex items-center justify-center gap-1 transition-colors"
-                >
-                  <Plus size={14} />
-                  <span>Insertar Nota</span>
-                </button>
-                <button
-                  onClick={handleRemoveLastNoteFromSelectedMeasure}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-rose-900/60 text-rose-300 rounded font-medium transition-colors"
-                  title="Eliminar última nota de este compás"
-                >
-                  Borrar Última
-                </button>
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">Duración (Figura):</label>
+              <div className="flex flex-wrap gap-1">
+                {Object.entries(DURATION_NAMES).map(([durKey, info]) => (
+                  <button
+                    key={durKey}
+                    onClick={() => setCurrentDuration(durKey as DurationType)}
+                    className={`px-2 py-1 rounded-lg flex items-center gap-1 text-xs font-bold transition-colors ${
+                      currentDuration === durKey ? 'bg-emerald-600 text-white shadow-sm' : 'bg-white text-slate-700 border border-amber-200 hover:bg-amber-100'
+                    }`}
+                  >
+                    <span>{info.symbol}</span>
+                    <span>{info.name}</span>
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* Panel de Análisis Armónico en los ejercicios */}
-            <div className="bg-slate-950/80 p-3 rounded-lg border border-slate-800 space-y-2.5">
-              <div className="font-semibold text-slate-300 flex items-center gap-1.5">
-                <PenTool size={14} className="text-cyan-400" />
-                <span>Notas en el Ejercicio / Análisis Armónico (Compás {selectedMeasure?.measureNumber})</span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-slate-400 mb-0.5">Grado Romano (Análisis):</label>
-                  <input
-                    type="text"
-                    value={selectedMeasure?.harmonicAnalysis?.romanNumeral || ''}
-                    onChange={(e) => handleUpdateHarmonicAnalysis('romanNumeral', e.target.value)}
-                    placeholder="Ej. I, IV, V7, ii6, vi"
-                    className="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-cyan-400 font-bold focus:outline-none focus:border-cyan-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-400 mb-0.5">Bajo Cifrado:</label>
-                  <input
-                    type="text"
-                    value={selectedMeasure?.harmonicAnalysis?.figuredBass || ''}
-                    onChange={(e) => handleUpdateHarmonicAnalysis('figuredBass', e.target.value)}
-                    placeholder="Ej. 6, 6/4, 7, 6/5"
-                    className="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-slate-300 focus:outline-none focus:border-cyan-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-slate-400 mb-0.5">Cifrado de Acorde (Nombre):</label>
-                <input
-                  type="text"
-                  value={selectedMeasure?.harmonicAnalysis?.chordName || ''}
-                  onChange={(e) => handleUpdateHarmonicAnalysis('chordName', e.target.value)}
-                  placeholder="Ej. Cmaj7, Am, G7, F#dim"
-                  className="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-purple-300 font-semibold focus:outline-none focus:border-cyan-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-400 mb-0.5">Comentarios Teóricos / Notas del Ejercicio:</label>
-                <textarea
-                  value={selectedMeasure?.harmonicAnalysis?.comments || ''}
-                  onChange={(e) => handleUpdateHarmonicAnalysis('comments', e.target.value)}
-                  placeholder="Escribe anotaciones sobre la conducción de voces, notas de paso, bordaduras o reglas de contrapunto..."
-                  rows={2}
-                  className="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-slate-300 focus:outline-none focus:border-cyan-500"
-                />
-              </div>
+            <div className="flex items-end gap-2">
+              <button
+                onClick={handleAddNoteToSelectedMeasure}
+                className="flex-1 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl flex items-center justify-center gap-1 shadow-md shadow-amber-600/20 transition-all"
+              >
+                <Plus size={14} />
+                <span>Insertar Nota</span>
+              </button>
+              <button
+                onClick={handleRemoveLastNoteFromSelectedMeasure}
+                className="px-3 py-2 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded-xl font-bold border border-rose-300 transition-colors"
+                title="Borrar última nota"
+              >
+                Borrar
+              </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Desplegable 3: Análisis Armónico */}
+      {activeDropdown === 'analysis' && !staveBlock.isCollapsed && (
+        <div className="p-4 bg-amber-50/90 border-b border-amber-200 text-xs space-y-3 animate-fade-in">
+          <div className="font-bold text-slate-800 flex items-center gap-1.5">
+            <PenTool size={14} className="text-amber-600" />
+            <span>Análisis Armónico (Compás {selectedMeasure?.measureNumber})</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-slate-700 font-bold mb-0.5">Grado Romano:</label>
+              <input
+                type="text"
+                value={selectedMeasure?.harmonicAnalysis?.romanNumeral || ''}
+                onChange={(e) => handleUpdateHarmonicAnalysis('romanNumeral', e.target.value)}
+                placeholder="Ej. I, IV, V7, ii6, vi"
+                className="w-full bg-white border border-amber-300 rounded-xl p-2 text-sky-800 font-bold focus:outline-none focus:border-amber-500 shadow-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-700 font-bold mb-0.5">Bajo Cifrado:</label>
+              <input
+                type="text"
+                value={selectedMeasure?.harmonicAnalysis?.figuredBass || ''}
+                onChange={(e) => handleUpdateHarmonicAnalysis('figuredBass', e.target.value)}
+                placeholder="Ej. 6, 6/4, 7, 6/5"
+                className="w-full bg-white border border-amber-300 rounded-xl p-2 text-slate-800 font-semibold focus:outline-none focus:border-amber-500 shadow-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-700 font-bold mb-0.5">Cifrado de Acorde:</label>
+              <input
+                type="text"
+                value={selectedMeasure?.harmonicAnalysis?.chordName || ''}
+                onChange={(e) => handleUpdateHarmonicAnalysis('chordName', e.target.value)}
+                placeholder="Ej. Cmaj7, Am, G7"
+                className="w-full bg-white border border-amber-300 rounded-xl p-2 text-purple-900 font-bold focus:outline-none focus:border-amber-500 shadow-sm"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-slate-700 font-bold mb-0.5">Notas & Observaciones del Ejercicio:</label>
+            <textarea
+              value={selectedMeasure?.harmonicAnalysis?.comments || ''}
+              onChange={(e) => handleUpdateHarmonicAnalysis('comments', e.target.value)}
+              placeholder="Escribe comentarios teóricos sobre la conducción de voces, especies de contrapunto o notas de paso..."
+              rows={2}
+              className="w-full bg-white border border-amber-300 rounded-xl p-2 text-slate-800 focus:outline-none focus:border-amber-500 shadow-sm"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Cuerpo del Pentagrama SVG en VexFlow */}
+      {!staveBlock.isCollapsed && (
+        <div className="p-4 bg-[#fdfbf7] overflow-x-auto min-h-[170px] flex items-center justify-center">
+          <div ref={containerRef} className="w-full flex justify-center" />
         </div>
       )}
     </div>

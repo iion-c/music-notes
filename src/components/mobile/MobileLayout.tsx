@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { 
-  BookOpen, Music, Volume2, Settings, Plus, Search, Star, 
-  ChevronUp, Camera, Play, Square, Sliders, Menu, X, Trash2
+  BookOpen, Music, Volume2, Plus, Star, Menu, X, HelpCircle
 } from 'lucide-react';
-import { Notebook, NotePage, StaveBlock, ContentBlock } from '../../types/music';
+import type { Notebook, NotePage } from '../../types/music';
 import { MusicNotebook } from '../editor/MusicNotebook';
 import { audioSynth } from '../../services/audioSynth';
 
@@ -15,6 +14,7 @@ interface Props {
   onCreatePage: (notebookId?: string) => void;
   onUpdatePage: (page: NotePage) => void;
   onDeletePage: (id: string) => void;
+  onOpenTutorial: () => void;
 }
 
 export const MobileLayout: React.FC<Props> = ({
@@ -24,9 +24,10 @@ export const MobileLayout: React.FC<Props> = ({
   onSelectPage,
   onCreatePage,
   onUpdatePage,
-  onDeletePage
+  onDeletePage,
+  onOpenTutorial
 }) => {
-  const [activeTab, setActiveTab] = useState<'notebooks' | 'notes' | 'audio' | 'settings'>('notes');
+  const [activeTab, setActiveTab] = useState<'notebooks' | 'notes' | 'audio'>('notes');
   const [showDrawer, setShowDrawer] = useState(false);
   const [bpm, setBpm] = useState(100);
 
@@ -38,38 +39,48 @@ export const MobileLayout: React.FC<Props> = ({
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-slate-950 text-slate-100 font-sans overflow-hidden">
+    <div className="flex flex-col h-screen w-screen bg-[#f7f4eb] text-slate-800 font-sans overflow-hidden">
       {/* Top Header Móvil */}
-      <div className="flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-slate-800 shrink-0">
-        <div className="flex items-center gap-2.5">
+      <div className="flex items-center justify-between px-4 py-3 bg-[#f8f5ee] border-b border-amber-200/80 shrink-0">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setShowDrawer(!showDrawer)}
-            className="p-2 rounded-lg bg-slate-800 text-slate-200"
+            className="p-2 rounded-xl bg-amber-100/80 text-amber-900 font-bold"
           >
             {showDrawer ? <X size={18} /> : <Menu size={18} />}
           </button>
 
           <div>
-            <h1 className="font-extrabold text-sm text-white leading-tight">Music Notes</h1>
-            <p className="text-[10px] text-cyan-400 truncate max-w-[150px]">{activePage?.title || 'Mis Apuntes'}</p>
+            <h1 className="font-extrabold text-sm text-slate-900 leading-tight">Music Notes</h1>
+            <p className="text-[10px] text-amber-800 font-semibold truncate max-w-[140px]">{activePage?.title || 'Mis Apuntes'}</p>
           </div>
         </div>
 
-        <button
-          onClick={() => onCreatePage()}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-cyan-600 text-white font-medium text-xs shadow-md shadow-cyan-600/30"
-        >
-          <Plus size={14} />
-          <span>Nota</span>
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={onOpenTutorial}
+            className="p-1.5 rounded-xl bg-amber-100 text-amber-900 font-bold text-xs"
+            title="Ver Tutorial"
+          >
+            <HelpCircle size={16} />
+          </button>
+
+          <button
+            onClick={() => onCreatePage()}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-600 text-white font-bold text-xs shadow-md shadow-amber-600/20"
+          >
+            <Plus size={14} />
+            <span>Nota</span>
+          </button>
+        </div>
       </div>
 
       {/* Drawer Lateral Móvil */}
       {showDrawer && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex">
-          <div className="w-4/5 max-w-xs bg-slate-900 h-full p-4 flex flex-col space-y-4 overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <span className="font-bold text-sm text-white">Lista de Notas</span>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex">
+          <div className="w-4/5 max-w-xs bg-[#fdfbf7] h-full p-4 flex flex-col space-y-4 overflow-y-auto border-r border-amber-200">
+            <div className="flex items-center justify-between border-b border-amber-200 pb-3">
+              <span className="font-bold text-sm text-slate-900">Lista de Notas</span>
               <button onClick={() => setShowDrawer(false)} className="text-slate-400">
                 <X size={18} />
               </button>
@@ -84,11 +95,11 @@ export const MobileLayout: React.FC<Props> = ({
                     setShowDrawer(false);
                   }}
                   className={`w-full text-left p-3 rounded-xl flex items-center justify-between ${
-                    p.id === activePage?.id ? 'bg-cyan-950 text-cyan-400 font-bold border border-cyan-800' : 'bg-slate-950/60 text-slate-300'
+                    p.id === activePage?.id ? 'bg-amber-100 text-amber-900 font-bold border border-amber-300' : 'bg-amber-50/50 text-slate-700'
                   }`}
                 >
                   <span className="text-xs truncate">{p.title}</span>
-                  {p.isFavorite && <Star size={12} className="text-amber-400 fill-amber-400" />}
+                  {p.isFavorite && <Star size={12} className="text-amber-500 fill-amber-500" />}
                 </button>
               ))}
             </div>
@@ -111,14 +122,14 @@ export const MobileLayout: React.FC<Props> = ({
 
         {activeTab === 'notebooks' && (
           <div className="p-4 space-y-3">
-            <h2 className="font-bold text-base text-white">Tus Cuadernos Musicales</h2>
+            <h2 className="font-bold text-base text-slate-900">Tus Cuadernos Musicales</h2>
             {notebooks.map(nb => (
-              <div key={nb.id} className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-950 border border-slate-800 shadow-lg">
+              <div key={nb.id} className="p-4 rounded-2xl bg-[#fdfbf7] border border-amber-200 shadow-sm">
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">{nb.icon}</span>
                   <div>
-                    <h3 className="font-bold text-sm text-white">{nb.name}</h3>
-                    <p className="text-xs text-slate-400">{nb.description}</p>
+                    <h3 className="font-bold text-sm text-slate-900">{nb.name}</h3>
+                    <p className="text-xs text-slate-600">{nb.description}</p>
                   </div>
                 </div>
               </div>
@@ -128,11 +139,11 @@ export const MobileLayout: React.FC<Props> = ({
 
         {activeTab === 'audio' && (
           <div className="p-4 space-y-4">
-            <h2 className="font-bold text-base text-white">Configuración del Sintetizador Móvil</h2>
-            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-3">
-              <div className="flex justify-between items-center text-xs font-semibold">
-                <span className="text-slate-300">Tempo de Audio:</span>
-                <span className="text-cyan-400">{bpm} BPM</span>
+            <h2 className="font-bold text-base text-slate-900">Configuración del Sintetizador Móvil</h2>
+            <div className="bg-[#fdfbf7] p-4 rounded-2xl border border-amber-200 space-y-3 shadow-sm">
+              <div className="flex justify-between items-center text-xs font-bold">
+                <span className="text-slate-700">Tempo de Audio:</span>
+                <span className="text-amber-700 font-mono">{bpm} BPM</span>
               </div>
               <input
                 type="range"
@@ -140,19 +151,19 @@ export const MobileLayout: React.FC<Props> = ({
                 max={220}
                 value={bpm}
                 onChange={(e) => handleBpmChange(parseInt(e.target.value, 10))}
-                className="w-full accent-cyan-500"
+                className="w-full accent-amber-600"
               />
             </div>
           </div>
         )}
       </div>
 
-      {/* Navegación Inferior Táctil (Bottom Navigation Bar) */}
-      <div className="fixed bottom-0 left-0 right-0 h-14 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 flex items-center justify-around z-40">
+      {/* Navegación Inferior Táctil */}
+      <div className="fixed bottom-0 left-0 right-0 h-14 bg-[#f8f5ee] border-t border-amber-200/80 flex items-center justify-around z-40">
         <button
           onClick={() => setActiveTab('notes')}
-          className={`flex flex-col items-center gap-0.5 text-[10px] font-medium transition-colors ${
-            activeTab === 'notes' ? 'text-cyan-400 font-bold' : 'text-slate-400'
+          className={`flex flex-col items-center gap-0.5 text-[10px] font-bold transition-colors ${
+            activeTab === 'notes' ? 'text-amber-700' : 'text-slate-400'
           }`}
         >
           <Music size={18} />
@@ -161,8 +172,8 @@ export const MobileLayout: React.FC<Props> = ({
 
         <button
           onClick={() => setActiveTab('notebooks')}
-          className={`flex flex-col items-center gap-0.5 text-[10px] font-medium transition-colors ${
-            activeTab === 'notebooks' ? 'text-cyan-400 font-bold' : 'text-slate-400'
+          className={`flex flex-col items-center gap-0.5 text-[10px] font-bold transition-colors ${
+            activeTab === 'notebooks' ? 'text-amber-700' : 'text-slate-400'
           }`}
         >
           <BookOpen size={18} />
@@ -171,8 +182,8 @@ export const MobileLayout: React.FC<Props> = ({
 
         <button
           onClick={() => setActiveTab('audio')}
-          className={`flex flex-col items-center gap-0.5 text-[10px] font-medium transition-colors ${
-            activeTab === 'audio' ? 'text-cyan-400 font-bold' : 'text-slate-400'
+          className={`flex flex-col items-center gap-0.5 text-[10px] font-bold transition-colors ${
+            activeTab === 'audio' ? 'text-amber-700' : 'text-slate-400'
           }`}
         >
           <Volume2 size={18} />

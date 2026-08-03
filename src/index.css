@@ -13,26 +13,38 @@
   }
 
   body {
-    background-color: #020617;
-    color: #f8fafc;
+    background-color: #f7f4eb;
+    color: #1e293b;
     overflow-x: hidden;
   }
 
-  /* Thin scrollbar for dark UI */
+  /* Thin scrollbar for academic parchment theme */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #090d16;
+    background: #f2ede0;
   }
   ::-webkit-scrollbar-thumb {
-    background: #1e293b;
+    background: #cbd5e1;
     border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #0284c7;
+    background: #d97706;
   }
+}
+
+/* Notebook Parchment paper background grid/line effect */
+.notebook-paper {
+  background-color: #fdfbf7;
+  background-image: linear-gradient(#e5e7eb 1px, transparent 1px);
+  background-size: 100% 28px;
+}
+
+/* Red notebook margin line */
+.notebook-margin {
+  border-left: 2px solid #f87171;
 }
 
 @layer utilities {
