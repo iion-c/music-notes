@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import LoadingScreen from '../components/LoadingScreen';
 import CustomCursor from '../components/CustomCursor';
 import Navbar from '../components/Navbar';
@@ -10,9 +10,14 @@ import AboutSection from '../components/AboutSection';
 import ReviewsSection from '../components/ReviewsSection';
 import ContactForm from '../components/ContactForm';
 import Footer from '../components/Footer';
+import { trackPageView } from '../lib/analytics';
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    trackPageView();
+  }, []);
 
   return (
     <>

@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LayoutDashboard, Film, MessageSquare, Settings, LogOut, ArrowLeft, MonitorPlay, Briefcase, User, Box } from 'lucide-react';
+import { LayoutDashboard, Film, MessageSquare, Settings, LogOut, ArrowLeft, MonitorPlay, Briefcase, User, Box, BarChart2 } from 'lucide-react';
 
 export default function AdminLayout() {
   const { logout, currentUser } = useAuth();
@@ -17,6 +17,7 @@ export default function AdminLayout() {
   };
 
   const navItems = [
+    { name: 'Analytics', path: '/admin/analytics', icon: BarChart2 },
     { name: 'Hero (Home)', path: '/admin/hero', icon: MonitorPlay },
     { name: 'Projects', path: '/admin/projects', icon: Film },
     { name: 'Services', path: '/admin/services', icon: Box },
