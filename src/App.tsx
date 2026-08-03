@@ -1,15 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import type { Notebook, NotePage } from './types/music';
 import { getStoredNotebooks, saveNotebooks, getStoredPages, savePages, hasSeenTutorial, setTutorialSeen } from './services/storage';
+import { 
+  initAuth, syncCloudNotebooks, syncCloudPages, 
+  saveCloudPage, saveCloudNotebook, deleteCloudPage 
+} from './services/firebase';
 import { DesktopLayout } from './components/desktop/DesktopLayout';
 import { MobileLayout } from './components/mobile/MobileLayout';
 import { WelcomeTutorialModal } from './components/onboarding/WelcomeTutorialModal';
-import { Monitor, Smartphone, HelpCircle } from 'lucide-react';
+import { Monitor, Smartphone, HelpCircle, CloudCheck, Cloud } from 'lucide-react';
+import type { User } from 'firebase/auth';
 
 export function App() {
   const [notebooks, setNotebooks] = useState<Notebook[]>(() => getStoredNotebooks());
   const [pages, setPages] = useState<NotePage[]>(() => getStoredPages());
   const [activePageId, setActivePageId] = useState<string | null>(() => pages[0]?.id || null);
+
+  // Estado del usuario en la Nube (Firebase)
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isCloudSynced, setIsCloudSynced] = useState<boolean>(false);
 
   // Tutorial animado
   const [showTutorial, setShowTutorial] = useState<boolean>(() => !hasSeenTutorial());
@@ -26,12 +35,42 @@ export function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Persistir cuadernos
+  // Inicializar Firebase Auth & Firestore Sync
+  useEffect(() => {
+    const unsubscribeAuth = initAuth((user) => {
+      setCurrentUser(user);
+      if (user) {
+        setIsCloudSynced(true);
+        // Suscribirse a cambios en Firestore
+        const unsubNB = syncCloudNotebooks(user.uid, (cloudNotebooks) => {
+          if (cloudNotebooks.length > 0) {
+            setNotebooks(cloudNotebooks);
+          }
+        });
+
+        const unsubPages = syncCloudPages(user.uid, (cloudPages) => {
+          if (cloudPages.length > 0) {
+            setPages(cloudPages);
+            if (!activePageId) setActivePageId(cloudPages[0]?.id || null);
+          }
+        });
+
+        return () => {
+          unsubNB();
+          unsubPages();
+        };
+      }
+    });
+
+    return () => unsubscribeAuth();
+  }, []);
+
+  // Persistir cuadernos localmente
   useEffect(() => {
     saveNotebooks(notebooks);
   }, [notebooks]);
 
-  // Persistir páginas
+  // Persistir páginas localmente
   useEffect(() => {
     savePages(pages);
   }, [pages]);
@@ -63,6 +102,11 @@ export function App() {
 
     setPages(prev => [newPage, ...prev]);
     setActivePageId(newPage.id);
+
+    // Sincronizar en la Nube
+    if (currentUser) {
+      saveCloudPage(currentUser.uid, newPage);
+    }
   };
 
   // Crear nuevo cuaderno
@@ -77,11 +121,19 @@ export function App() {
       createdAt: Date.now()
     };
     setNotebooks(prev => [...prev, newNb]);
+
+    if (currentUser) {
+      saveCloudNotebook(currentUser.uid, newNb);
+    }
   };
 
   // Actualizar página
   const handleUpdatePage = (updatedPage: NotePage) => {
     setPages(prev => prev.map(p => p.id === updatedPage.id ? updatedPage : p));
+
+    if (currentUser) {
+      saveCloudPage(currentUser.uid, updatedPage);
+    }
   };
 
   // Eliminar página
@@ -90,6 +142,10 @@ export function App() {
     setPages(remaining);
     if (activePageId === id) {
       setActivePageId(remaining[0]?.id || null);
+    }
+
+    if (currentUser) {
+      deleteCloudPage(currentUser.uid, id);
     }
   };
 
@@ -139,11 +195,19 @@ export function App() {
 
   return (
     <div className="relative w-screen h-screen overflow-hidden">
-      {/* Botón de cambio rápido de modo Web vs Mobile (Header de testing) */}
-      <div className="fixed top-2 right-4 z-40 flex items-center gap-1 bg-[#fdfbf7] border border-amber-200 p-1 rounded-full shadow-lg text-[11px]">
+      {/* Indicator de sincronización con la Nube (Firebase) & Header de testing */}
+      <div className="fixed top-2 right-4 z-40 flex items-center gap-1.5 bg-[#fdfbf7] border border-amber-200 p-1 rounded-full shadow-lg text-[11px]">
+        <div 
+          className="px-2 py-0.5 rounded-full flex items-center gap-1 font-bold text-amber-900 bg-amber-100 border border-amber-200 text-[10px]"
+          title="Sincronización en tiempo real activa con Firebase Firestore"
+        >
+          <CloudCheck size={12} className="text-amber-700" />
+          <span className="hidden md:inline">Firebase Conectado</span>
+        </div>
+
         <button
           onClick={() => setForceViewMode('desktop')}
-          className={`px-2.5 py-1 rounded-full flex items-center gap-1 font-bold transition-colors ${
+          className={`px-2 py-1 rounded-full flex items-center gap-1 font-bold transition-colors ${
             activeMode === 'desktop' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
           }`}
           title="Vista Web Desktop"
@@ -154,7 +218,7 @@ export function App() {
 
         <button
           onClick={() => setForceViewMode('mobile')}
-          className={`px-2.5 py-1 rounded-full flex items-center gap-1 font-bold transition-colors ${
+          className={`px-2 py-1 rounded-full flex items-center gap-1 font-bold transition-colors ${
             activeMode === 'mobile' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
           }`}
           title="Vista Mobile Dedicated"
