@@ -9,17 +9,17 @@ import { DesktopLayout } from './components/desktop/DesktopLayout';
 import { MobileLayout } from './components/mobile/MobileLayout';
 import { WelcomeTutorialModal } from './components/onboarding/WelcomeTutorialModal';
 import { AuthModal } from './components/auth/AuthModal';
-import { Monitor, Smartphone, HelpCircle, CloudCheck, User as UserIcon } from 'lucide-react';
+import { Monitor, Smartphone, HelpCircle, User as UserIcon } from 'lucide-react';
 import type { User } from 'firebase/auth';
 
 export function App() {
-  const [notebooks, setNotebooks] = useState<Notebook[]>(() => getStoredNotebooks());
-  const [pages, setPages] = useState<NotePage[]>(() => getStoredPages());
-  const [activePageId, setActivePageId] = useState<string | null>(() => pages[0]?.id || null);
-
-  // Estado del usuario en la Nube (Firebase) & Modal de Auth
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
+
+  // Cuadernos y Páginas Aislamiento por Cuenta
+  const [notebooks, setNotebooks] = useState<Notebook[]>([]);
+  const [pages, setPages] = useState<NotePage[]>([]);
+  const [activePageId, setActivePageId] = useState<string | null>(null);
 
   // Tutorial animado
   const [showTutorial, setShowTutorial] = useState<boolean>(() => !hasSeenTutorial());
@@ -36,53 +36,67 @@ export function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Inicializar Firebase Auth & Firestore Sync
+  // Inicializar Firebase Auth & Firestore Sync con Aislamiento Estricto por Usuario
   useEffect(() => {
+    let unsubNB: (() => void) | null = null;
+    let unsubPages: (() => void) | null = null;
+
     const unsubscribeAuth = initAuth((user) => {
       setCurrentUser(user);
+
       if (user) {
-        // Suscribirse a cambios en Firestore
-        const unsubNB = syncCloudNotebooks(user.uid, (cloudNotebooks) => {
-          if (cloudNotebooks.length > 0) {
-            setNotebooks(cloudNotebooks);
-          }
+        // Limpiar datos del usuario anterior al cambiar de cuenta
+        setNotebooks([]);
+        setPages([]);
+        setActivePageId(null);
+
+        // Suscribirse A SUS PROPIOS cuadernos en Firestore
+        unsubNB = syncCloudNotebooks(user.uid, (cloudNotebooks) => {
+          setNotebooks(cloudNotebooks);
         });
 
-        const unsubPages = syncCloudPages(user.uid, (cloudPages) => {
-          if (cloudPages.length > 0) {
-            setPages(cloudPages);
-            if (!activePageId) setActivePageId(cloudPages[0]?.id || null);
+        // Suscribirse A SUS PROPIAS páginas en Firestore
+        unsubPages = syncCloudPages(user.uid, (cloudPages) => {
+          setPages(cloudPages);
+          if (cloudPages.length > 0 && !activePageId) {
+            setActivePageId(cloudPages[0].id);
           }
         });
-
-        return () => {
-          unsubNB();
-          unsubPages();
-        };
+      } else {
+        // Cargar almacenamiento local de invitado si no hay sesión
+        const localNBs = getStoredNotebooks();
+        const localPgs = getStoredPages();
+        setNotebooks(localNBs);
+        setPages(localPgs);
+        if (localPgs.length > 0) setActivePageId(localPgs[0].id);
       }
     });
 
-    return () => unsubscribeAuth();
+    return () => {
+      unsubscribeAuth();
+      if (unsubNB) unsubNB();
+      if (unsubPages) unsubPages();
+    };
   }, []);
 
-  // Persistir cuadernos localmente
+  // Persistir cuadernos localmente como respaldo
   useEffect(() => {
-    saveNotebooks(notebooks);
-  }, [notebooks]);
+    if (!currentUser) saveNotebooks(notebooks);
+  }, [notebooks, currentUser]);
 
-  // Persistir páginas localmente
+  // Persistir páginas localmente como respaldo
   useEffect(() => {
-    savePages(pages);
-  }, [pages]);
+    if (!currentUser) savePages(pages);
+  }, [pages, currentUser]);
 
   const handleCloseTutorial = () => {
     setShowTutorial(false);
     setTutorialSeen(true);
   };
 
-  // Crear nueva nota musical
+  // Crear nueva nota musical exclusiva para la cuenta activa
   const handleCreatePage = (notebookId?: string) => {
-    const targetNotebookId = notebookId || notebooks[0]?.id || 'nb-armonia';
+    const targetNotebookId = notebookId || notebooks[0]?.id || `nb-${Date.now()}`;
     const newPage: NotePage = {
       id: `page-${Date.now()}`,
       notebookId: targetNotebookId,
@@ -108,7 +122,7 @@ export function App() {
     }
   };
 
-  // Crear nuevo cuaderno
+  // Crear nuevo cuaderno exclusivo para la cuenta activa
   const handleCreateNotebook = (name: string, description: string) => {
     const newNb: Notebook = {
       id: `nb-${Date.now()}`,
