@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Play, Square, Camera, ChevronDown, ChevronUp, Plus, Trash2, 
+  Play, Square, Camera, ChevronDown, ChevronUp, Trash2, 
   Settings, Music, Sliders, Copy, PenTool, MousePointerClick
 } from 'lucide-react';
 import type { 
@@ -12,6 +12,7 @@ import { renderStaveToContainer } from '../../services/vexRender';
 import { audioSynth } from '../../services/audioSynth';
 import { downloadElementScreenshot, copyElementToClipboard } from '../../services/screenshot';
 import { EditorKeyboard } from './EditorKeyboard';
+import { getMeasureCapacityIn16ths } from '../../services/rhythmEngine';
 
 interface Props {
   staveBlock: StaveBlock;
@@ -110,34 +111,38 @@ export const StaveBlockComponent: React.FC<Props> = ({
     onUpdate({ ...staveBlock, isCollapsed: !staveBlock.isCollapsed, updatedAt: Date.now() });
   };
 
-  // Añadir un compás
-  const handleAddMeasure = () => {
-    const newMeasureNum = staveBlock.measures.length + 1;
-    const newMeasure: MeasureData = {
-      id: `m-${Date.now()}-${newMeasureNum}`,
-      measureNumber: newMeasureNum,
-      notes: [
-        { id: `n-${Date.now()}-1`, keys: ['c/4'], duration: 'q', isRest: false },
-        { id: `n-${Date.now()}-2`, keys: ['e/4'], duration: 'q', isRest: false },
-        { id: `n-${Date.now()}-3`, keys: ['g/4'], duration: 'q', isRest: false },
-        { id: `n-${Date.now()}-4`, keys: ['c/5'], duration: 'q', isRest: false }
-      ],
-      harmonicAnalysis: { measureNumber: newMeasureNum, romanNumeral: 'I', figuredBass: '5/3' }
-    };
-    onUpdate({
-      ...staveBlock,
-      measures: [...staveBlock.measures, newMeasure],
-      updatedAt: Date.now()
-    });
+  // Convertir figura a semicorcheas para cálculo de métrica
+  const durationTo16ths = (dur: DurationType, dotted: boolean = false): number => {
+    let base = 4;
+    switch (dur) {
+      case 'w': base = 16; break;
+      case 'h': base = 8; break;
+      case 'q': base = 4; break;
+      case '8': base = 2; break;
+      case '16': base = 1; break;
+    }
+    return dotted ? base * 1.5 : base;
   };
 
-  // Inserción de notas (estilo teclado ArmonIA-App)
+  // Inserción de notas con AUTO-CREACIÓN DE COMPÁSEs al llenar la métrica
   const handleAddNoteFromKeyboard = (pitch: string) => {
     const measures = [...staveBlock.measures];
-    if (selectedMeasureIdx < 0 || selectedMeasureIdx >= measures.length) return;
+    let targetIdx = selectedMeasureIdx;
+    if (targetIdx < 0 || targetIdx >= measures.length) targetIdx = measures.length - 1;
 
+    const capacity16ths = getMeasureCapacityIn16ths(staveBlock.timeSignature || '4/4');
+    let measure = { ...measures[targetIdx] };
+
+    // Calcular duración acumulada actual del compás
+    const currentDurationInMeasure = measure.notes.reduce((acc, n) => {
+      let d = 4;
+      if (typeof n.duration === 'string') d = durationTo16ths(n.duration as any, n.isDotted);
+      else if (typeof n.duration === 'number') d = n.duration;
+      return acc + d;
+    }, 0);
+
+    const note16ths = durationTo16ths(selectedDuration, isDotted);
     const isRest = pitch === 'R';
-    const measure = { ...measures[selectedMeasureIdx] };
 
     const newNote: MusicNoteItem = {
       id: `n-${Date.now()}`,
@@ -148,8 +153,35 @@ export const StaveBlockComponent: React.FC<Props> = ({
       accidental: isRest ? undefined : (selectedAccidental || undefined)
     };
 
-    measure.notes = [...measure.notes, newNote];
-    measures[selectedMeasureIdx] = measure;
+    // Si el compás actual ya está lleno (o se llena con esta nota), crear automáticamente un compás nuevo
+    if (currentDurationInMeasure + note16ths > capacity16ths && measure.notes.length > 0) {
+      const newMeasureNum = measures.length + 1;
+      const autoMeasure: MeasureData = {
+        id: `m-${Date.now()}-${newMeasureNum}`,
+        measureNumber: newMeasureNum,
+        notes: [newNote],
+        harmonicAnalysis: { measureNumber: newMeasureNum }
+      };
+
+      measures.push(autoMeasure);
+      setSelectedMeasureIdx(measures.length - 1);
+    } else {
+      measure.notes = [...measure.notes, newNote];
+      measures[targetIdx] = measure;
+
+      // Si al añadir esta nota el compás se llena exactamente, crear automáticamente el siguiente compás vacío preparado
+      if (currentDurationInMeasure + note16ths >= capacity16ths) {
+        const newMeasureNum = measures.length + 1;
+        const autoEmptyMeasure: MeasureData = {
+          id: `m-${Date.now()}-${newMeasureNum}`,
+          measureNumber: newMeasureNum,
+          notes: [],
+          harmonicAnalysis: { measureNumber: newMeasureNum }
+        };
+        measures.push(autoEmptyMeasure);
+        setSelectedMeasureIdx(measures.length - 1);
+      }
+    }
 
     if (!isRest) {
       audioSynth.playNote(newNote);
@@ -239,9 +271,7 @@ export const StaveBlockComponent: React.FC<Props> = ({
                 {staveBlock.keySignature}
               </span>
               <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200 font-mono">
-                {staveBlock.displayRange.mode === 'custom' 
-                  ? `Compases ${staveBlock.displayRange.startMeasure || 1}-${staveBlock.displayRange.endMeasure || staveBlock.measures.length}`
-                  : `${staveBlock.measures.length} compases`}
+                {staveBlock.measures.length} compases (Auto)
               </span>
             </div>
           </div>
@@ -303,7 +333,7 @@ export const StaveBlockComponent: React.FC<Props> = ({
             }`}
           >
             <Music size={14} />
-            <span>Teclado Notas ArmonIA ▾</span>
+            <span>Teclado Notas ▾</span>
           </button>
 
           <button
@@ -332,12 +362,12 @@ export const StaveBlockComponent: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Desplegable 1: Teclado de Notas de ArmonIA-App */}
+      {/* Desplegable 1: Teclado de Notas de ArmonIA-App con Auto-Creación de Compases */}
       {activeDropdown === 'notes' && !staveBlock.isCollapsed && (
         <div className="p-3 bg-amber-50/90 border-b border-amber-200 animate-fade-in space-y-2">
           <div className="flex items-center justify-between text-xs pb-1 border-b border-amber-200/80">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-slate-800">Compás:</span>
+              <span className="font-bold text-slate-800">Compás Actual:</span>
               <select
                 value={selectedMeasureIdx}
                 onChange={(e) => setSelectedMeasureIdx(parseInt(e.target.value, 10))}
@@ -349,13 +379,9 @@ export const StaveBlockComponent: React.FC<Props> = ({
               </select>
             </div>
 
-            <button
-              onClick={handleAddMeasure}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-sm"
-            >
-              <Plus size={13} />
-              <span>+ Compás</span>
-            </button>
+            <span className="text-[11px] text-amber-800 font-medium italic">
+              ✨ Los compases se crean automáticamente al llenar la métrica
+            </span>
           </div>
 
           <EditorKeyboard
@@ -430,8 +456,8 @@ export const StaveBlockComponent: React.FC<Props> = ({
               })}
               className="w-full bg-white border border-amber-300 rounded-xl p-2 text-slate-900 font-bold focus:outline-none focus:border-amber-500 shadow-sm"
             >
-              <option value="all">Ver todos ({staveBlock.measures.length})</option>
-              <option value="custom">Personalizar rango</option>
+              <option value="all">Ver todos los compases ({staveBlock.measures.length})</option>
+              <option value="custom">Personalizar rango de compases</option>
             </select>
           </div>
         </div>
