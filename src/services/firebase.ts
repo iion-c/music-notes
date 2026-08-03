@@ -3,7 +3,9 @@ import {
   getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query 
 } from "firebase/firestore";
 import { 
-  getAuth, signInAnonymously, onAuthStateChanged, User 
+  getAuth, signInAnonymously, onAuthStateChanged, User,
+  signInWithEmailAndPassword, createUserWithEmailAndPassword,
+  signInWithPopup, GoogleAuthProvider, signOut
 } from "firebase/auth";
 import type { Notebook, NotePage } from "../types/music";
 
@@ -20,17 +22,42 @@ const firebaseConfig = {
 export const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+export const googleProvider = new GoogleAuthProvider();
 
-// Autenticación automática o anónima para sincronización sin fricción
+// Listener de Auth
 export function initAuth(onUserChanged: (user: User | null) => void): () => void {
   return onAuthStateChanged(auth, (user) => {
-    if (!user) {
-      signInAnonymously(auth).catch(err => {
-        console.warn("Autenticación anónima opcional:", err);
-      });
-    }
     onUserChanged(user);
   });
+}
+
+// Iniciar sesión con Correo / Contraseña
+export async function loginWithEmail(email: string, pass: string): Promise<User> {
+  const cred = await signInWithEmailAndPassword(auth, email, pass);
+  return cred.user;
+}
+
+// Registrar nueva cuenta con Correo / Contraseña
+export async function registerWithEmail(email: string, pass: string): Promise<User> {
+  const cred = await createUserWithEmailAndPassword(auth, email, pass);
+  return cred.user;
+}
+
+// Iniciar sesión con Google
+export async function loginWithGoogle(): Promise<User> {
+  const cred = await signInWithPopup(auth, googleProvider);
+  return cred.user;
+}
+
+// Entrar como invitado anónimo
+export async function loginAsGuest(): Promise<User> {
+  const cred = await signInAnonymously(auth);
+  return cred.user;
+}
+
+// Cerrar Sesión
+export async function logoutUser(): Promise<void> {
+  await signOut(auth);
 }
 
 // Sincronización en tiempo real de Cuadernos en Firestore

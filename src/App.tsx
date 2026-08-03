@@ -8,7 +8,8 @@ import {
 import { DesktopLayout } from './components/desktop/DesktopLayout';
 import { MobileLayout } from './components/mobile/MobileLayout';
 import { WelcomeTutorialModal } from './components/onboarding/WelcomeTutorialModal';
-import { Monitor, Smartphone, HelpCircle, CloudCheck, Cloud } from 'lucide-react';
+import { AuthModal } from './components/auth/AuthModal';
+import { Monitor, Smartphone, HelpCircle, CloudCheck, User as UserIcon } from 'lucide-react';
 import type { User } from 'firebase/auth';
 
 export function App() {
@@ -16,9 +17,9 @@ export function App() {
   const [pages, setPages] = useState<NotePage[]>(() => getStoredPages());
   const [activePageId, setActivePageId] = useState<string | null>(() => pages[0]?.id || null);
 
-  // Estado del usuario en la Nube (Firebase)
+  // Estado del usuario en la Nube (Firebase) & Modal de Auth
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [isCloudSynced, setIsCloudSynced] = useState<boolean>(false);
+  const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
 
   // Tutorial animado
   const [showTutorial, setShowTutorial] = useState<boolean>(() => !hasSeenTutorial());
@@ -40,7 +41,6 @@ export function App() {
     const unsubscribeAuth = initAuth((user) => {
       setCurrentUser(user);
       if (user) {
-        setIsCloudSynced(true);
         // Suscribirse a cambios en Firestore
         const unsubNB = syncCloudNotebooks(user.uid, (cloudNotebooks) => {
           if (cloudNotebooks.length > 0) {
@@ -103,7 +103,6 @@ export function App() {
     setPages(prev => [newPage, ...prev]);
     setActivePageId(newPage.id);
 
-    // Sincronizar en la Nube
     if (currentUser) {
       saveCloudPage(currentUser.uid, newPage);
     }
@@ -195,15 +194,18 @@ export function App() {
 
   return (
     <div className="relative w-screen h-screen overflow-hidden">
-      {/* Indicator de sincronización con la Nube (Firebase) & Header de testing */}
-      <div className="fixed top-2 right-4 z-40 flex items-center gap-1.5 bg-[#fdfbf7] border border-amber-200 p-1 rounded-full shadow-lg text-[11px]">
-        <div 
-          className="px-2 py-0.5 rounded-full flex items-center gap-1 font-bold text-amber-900 bg-amber-100 border border-amber-200 text-[10px]"
-          title="Sincronización en tiempo real activa con Firebase Firestore"
+      {/* Barra de estado superior: Firebase Sync Status & Testing view switcher */}
+      <div className="fixed top-2 right-3 z-40 flex items-center gap-1.5 bg-[#fdfbf7] border border-amber-200 p-1 rounded-full shadow-lg text-[11px]">
+        <button
+          onClick={() => setShowAuthModal(true)}
+          className="px-2 py-0.5 rounded-full flex items-center gap-1 font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-200 text-[10px] transition-colors"
+          title="Iniciar Sesión / Administrar Cuenta"
         >
-          <CloudCheck size={12} className="text-amber-700" />
-          <span className="hidden md:inline">Firebase Conectado</span>
-        </div>
+          <UserIcon size={12} className="text-amber-700" />
+          <span className="max-w-[100px] truncate">
+            {currentUser ? (currentUser.email || 'Usuario') : 'Crear Cuenta'}
+          </span>
+        </button>
 
         <button
           onClick={() => setForceViewMode('desktop')}
@@ -213,7 +215,7 @@ export function App() {
           title="Vista Web Desktop"
         >
           <Monitor size={12} />
-          <span className="hidden sm:inline">Modo Web</span>
+          <span className="hidden sm:inline">Web</span>
         </button>
 
         <button
@@ -224,7 +226,7 @@ export function App() {
           title="Vista Mobile Dedicated"
         >
           <Smartphone size={12} />
-          <span className="hidden sm:inline">Modo Mobile</span>
+          <span className="hidden sm:inline">Móvil</span>
         </button>
 
         <button
@@ -235,6 +237,13 @@ export function App() {
           <HelpCircle size={13} />
         </button>
       </div>
+
+      {/* Modal de Autenticación */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        currentUser={currentUser}
+      />
 
       {/* Tutorial Animado Modal */}
       <WelcomeTutorialModal
@@ -247,17 +256,20 @@ export function App() {
           notebooks={notebooks}
           pages={pages}
           activePageId={activePageId}
+          currentUser={currentUser}
           onSelectPage={(id) => setActivePageId(id)}
           onCreatePage={handleCreatePage}
           onUpdatePage={handleUpdatePage}
           onDeletePage={handleDeletePage}
           onOpenTutorial={() => setShowTutorial(true)}
+          onOpenAuthModal={() => setShowAuthModal(true)}
         />
       ) : (
         <DesktopLayout
           notebooks={notebooks}
           pages={pages}
           activePageId={activePageId}
+          currentUser={currentUser}
           onSelectPage={(id) => setActivePageId(id)}
           onCreatePage={handleCreatePage}
           onCreateNotebook={handleCreateNotebook}
@@ -266,6 +278,7 @@ export function App() {
           onExportAllData={handleExportAllData}
           onImportData={handleImportData}
           onOpenTutorial={() => setShowTutorial(true)}
+          onOpenAuthModal={() => setShowAuthModal(true)}
         />
       )}
     </div>

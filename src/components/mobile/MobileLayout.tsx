@@ -1,31 +1,36 @@
 import React, { useState } from 'react';
 import { 
-  BookOpen, Music, Volume2, Plus, Star, Menu, X, HelpCircle
+  BookOpen, Music, Volume2, Plus, Star, Menu, X, HelpCircle, User as UserIcon
 } from 'lucide-react';
 import type { Notebook, NotePage } from '../../types/music';
 import { MusicNotebook } from '../editor/MusicNotebook';
 import { audioSynth } from '../../services/audioSynth';
+import type { User } from 'firebase/auth';
 
 interface Props {
   notebooks: Notebook[];
   pages: NotePage[];
   activePageId: string | null;
+  currentUser: User | null;
   onSelectPage: (id: string) => void;
   onCreatePage: (notebookId?: string) => void;
   onUpdatePage: (page: NotePage) => void;
   onDeletePage: (id: string) => void;
   onOpenTutorial: () => void;
+  onOpenAuthModal: () => void;
 }
 
 export const MobileLayout: React.FC<Props> = ({
   notebooks,
   pages,
   activePageId,
+  currentUser,
   onSelectPage,
   onCreatePage,
   onUpdatePage,
   onDeletePage,
-  onOpenTutorial
+  onOpenTutorial,
+  onOpenAuthModal
 }) => {
   const [activeTab, setActiveTab] = useState<'notebooks' | 'notes' | 'audio'>('notes');
   const [showDrawer, setShowDrawer] = useState(false);
@@ -40,34 +45,42 @@ export const MobileLayout: React.FC<Props> = ({
 
   return (
     <div className="flex flex-col h-screen w-screen bg-[#f7f4eb] text-slate-800 font-sans overflow-hidden">
-      {/* Top Header Móvil */}
-      <div className="flex items-center justify-between px-4 py-3 bg-[#f8f5ee] border-b border-amber-200/80 shrink-0">
-        <div className="flex items-center gap-2">
+      {/* Top Header Móvil (Limpio y Responsivo) */}
+      <div className="flex items-center justify-between px-3 py-2.5 bg-[#f8f5ee] border-b border-amber-200/80 shrink-0 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <button
             onClick={() => setShowDrawer(!showDrawer)}
-            className="p-2 rounded-xl bg-amber-100/80 text-amber-900 font-bold"
+            className="p-2 rounded-xl bg-amber-100/80 text-amber-900 font-bold shrink-0"
           >
             {showDrawer ? <X size={18} /> : <Menu size={18} />}
           </button>
 
-          <div>
-            <h1 className="font-extrabold text-sm text-slate-900 leading-tight">Music Notes</h1>
-            <p className="text-[10px] text-amber-800 font-semibold truncate max-w-[140px]">{activePage?.title || 'Mis Apuntes'}</p>
+          <div className="min-w-0">
+            <h1 className="font-extrabold text-xs sm:text-sm text-slate-900 leading-tight truncate">Music Notes</h1>
+            <p className="text-[10px] text-amber-800 font-semibold truncate max-w-[120px]">{activePage?.title || 'Mis Apuntes'}</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={onOpenAuthModal}
+            className="p-1.5 rounded-xl bg-amber-100 text-amber-900 font-bold text-xs"
+            title="Cuenta / Iniciar Sesión"
+          >
+            <UserIcon size={15} />
+          </button>
+
           <button
             onClick={onOpenTutorial}
             className="p-1.5 rounded-xl bg-amber-100 text-amber-900 font-bold text-xs"
             title="Ver Tutorial"
           >
-            <HelpCircle size={16} />
+            <HelpCircle size={15} />
           </button>
 
           <button
             onClick={() => onCreatePage()}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-600 text-white font-bold text-xs shadow-md shadow-amber-600/20"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-600 text-white font-bold text-xs shadow-md shadow-amber-600/20"
           >
             <Plus size={14} />
             <span>Nota</span>

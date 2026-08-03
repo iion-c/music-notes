@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
 import { 
-  BookOpen, Plus, Search, Star, Music, Settings, Download, Upload, 
-  HelpCircle, Volume2, Sliders, ChevronRight, Hash, FolderPlus, Sparkles 
+  Plus, Search, Star, Music, Download, Upload, 
+  HelpCircle, Volume2, User as UserIcon
 } from 'lucide-react';
 import type { Notebook, NotePage } from '../../types/music';
 import { MusicNotebook } from '../editor/MusicNotebook';
 import { audioSynth } from '../../services/audioSynth';
+import type { User } from 'firebase/auth';
 
 interface Props {
   notebooks: Notebook[];
   pages: NotePage[];
   activePageId: string | null;
+  currentUser: User | null;
   onSelectPage: (id: string) => void;
   onCreatePage: (notebookId?: string) => void;
   onCreateNotebook: (name: string, description: string) => void;
@@ -19,12 +21,14 @@ interface Props {
   onExportAllData: () => void;
   onImportData: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onOpenTutorial: () => void;
+  onOpenAuthModal: () => void;
 }
 
 export const DesktopLayout: React.FC<Props> = ({
   notebooks,
   pages,
   activePageId,
+  currentUser,
   onSelectPage,
   onCreatePage,
   onCreateNotebook,
@@ -32,7 +36,8 @@ export const DesktopLayout: React.FC<Props> = ({
   onDeletePage,
   onExportAllData,
   onImportData,
-  onOpenTutorial
+  onOpenTutorial,
+  onOpenAuthModal
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Todas');
@@ -80,8 +85,16 @@ export const DesktopLayout: React.FC<Props> = ({
 
           <div className="flex items-center gap-1">
             <button
+              onClick={onOpenAuthModal}
+              className="p-1.5 rounded-xl bg-amber-100 text-amber-900 font-bold text-xs hover:bg-amber-200 transition-colors flex items-center gap-1"
+              title="Cuenta / Iniciar Sesión"
+            >
+              <UserIcon size={15} />
+            </button>
+
+            <button
               onClick={onOpenTutorial}
-              className="p-1.5 rounded-lg bg-amber-100 text-amber-900 hover:bg-amber-200 text-xs font-bold transition-colors"
+              className="p-1.5 rounded-xl bg-amber-100 text-amber-900 hover:bg-amber-200 text-xs font-bold transition-colors"
               title="Ver Guía / Tutorial Animado"
             >
               <HelpCircle size={16} />
