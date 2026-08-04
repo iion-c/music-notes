@@ -31,17 +31,44 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
   const [step, setStep] = useState<'initial-measures' | 'workspace' | 'export-select'>('initial-measures');
   const [initialMeasureCount, setInitialMeasureCount] = useState<number>(4);
 
-  // Teclado ArmonIA
+  // Teclado ArmonIA & Shortcuts PC
   const [selectedDuration, setSelectedDuration] = useState<DurationType>('q');
   const [isDotted, setIsDotted] = useState<boolean>(false);
   const [selectedAccidental, setSelectedAccidental] = useState<PitchAccidental>('');
   const [selectedOctave, setSelectedOctave] = useState<number>(4);
+
+  // Posición del cursor del ratón en PC para mostrar el ícono de la nota seleccionada
+  const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
 
   const [exportMode, setExportMode] = useState<'all' | 'custom'>('all');
   const [startMeasure, setStartMeasure] = useState<number>(1);
   const [endMeasure, setEndMeasure] = useState<number>(initialBlock.measures.length || 1);
 
   if (!isOpen) return null;
+
+  // Mapa de atajos de teclado para PC (1: 16th, 2: 8th, 3: quarter, 4: half, 5: whole)
+  useEffect(() => {
+    if (step !== 'workspace') return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement)?.tagName)) return;
+
+      switch (e.key) {
+        case '1': setSelectedDuration('16'); break;
+        case '2': setSelectedDuration('8'); break;
+        case '3': setSelectedDuration('q'); break;
+        case '4': setSelectedDuration('h'); break;
+        case '5': setSelectedDuration('w'); break;
+        case '.': setIsDotted(prev => !prev); break;
+        case '#': setSelectedAccidental(prev => prev === '#' ? '' : '#'); break;
+        case 'b': case 'B': setSelectedAccidental(prev => prev === 'b' ? '' : 'b'); break;
+        case 'Backspace': case 'Delete': handleRemoveLastNote(); break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [step, currentBlock]);
 
   // Confirmar cantidad de compases iniciales
   const handleStartWithMeasures = (count: number) => {
@@ -128,7 +155,7 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
         const msg = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
         if (msg.type === 'PENCIL_COMMIT' && msg.data?.step && msg.data?.octave !== undefined) {
           const pitchStr = `${msg.data.step.toLowerCase()}/${msg.data.octave}`;
-          handleAddNoteFromKeyboard(pitchStr);
+          handleAddNoteToExistingMeasures(pitchStr, msg.data.globalIdx);
         }
       } catch (e) {}
     };
@@ -158,29 +185,17 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
     return dotted ? base * 1.5 : base;
   };
 
-  // Inserción de notas desde Teclado ArmonIA o motor táctil de Lápiz
-  const handleAddNoteFromKeyboard = (pitch: string) => {
+  // Usar los compases creados existentes sin desbordar ni crear nuevos innecesarios
+  const handleAddNoteToExistingMeasures = (pitch: string, targetGlobalIdx?: number) => {
     const measures = [...currentBlock.measures];
-    let targetIdx = measures.length - 1;
-    if (targetIdx < 0) targetIdx = 0;
+    if (measures.length === 0) return;
 
-    const capacity16ths = getMeasureCapacityIn16ths(currentBlock.timeSignature || '4/4');
-    let measure = measures[targetIdx] ? { ...measures[targetIdx] } : {
-      id: `m-${Date.now()}-1`,
-      measureNumber: 1,
-      notes: []
-    };
+    let targetMeasureIdx = measures.length - 1;
+    if (targetGlobalIdx !== undefined && targetGlobalIdx >= 0) {
+      targetMeasureIdx = Math.min(targetGlobalIdx, measures.length - 1);
+    }
 
-    const currentDurationInMeasure = measure.notes.reduce((acc, n) => {
-      let d = 4;
-      if (typeof n.duration === 'string') d = durationTo16ths(n.duration as any, n.isDotted);
-      else if (typeof n.duration === 'number') d = n.duration;
-      return acc + d;
-    }, 0);
-
-    const note16ths = durationTo16ths(selectedDuration, isDotted);
     const isRest = pitch === 'R';
-
     const newNote = {
       id: `n-${Date.now()}`,
       keys: isRest ? ['b/4'] : [pitch],
@@ -190,28 +205,9 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
       accidental: isRest ? undefined : (selectedAccidental || undefined)
     };
 
-    if (currentDurationInMeasure + note16ths > capacity16ths && measure.notes.length > 0) {
-      const newMeasureNum = measures.length + 1;
-      measures.push({
-        id: `m-${Date.now()}-${newMeasureNum}`,
-        measureNumber: newMeasureNum,
-        notes: [newNote],
-        harmonicAnalysis: { measureNumber: newMeasureNum }
-      });
-    } else {
-      measure.notes = [...measure.notes, newNote];
-      measures[targetIdx] = measure;
-
-      if (currentDurationInMeasure + note16ths >= capacity16ths) {
-        const newMeasureNum = measures.length + 1;
-        measures.push({
-          id: `m-${Date.now()}-${newMeasureNum}`,
-          measureNumber: newMeasureNum,
-          notes: [],
-          harmonicAnalysis: { measureNumber: newMeasureNum }
-        });
-      }
-    }
+    const targetMeasure = { ...measures[targetMeasureIdx] };
+    targetMeasure.notes = [...targetMeasure.notes, newNote];
+    measures[targetMeasureIdx] = targetMeasure;
 
     setCurrentBlock({ ...currentBlock, measures, updatedAt: Date.now() });
   };
@@ -248,8 +244,32 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
     onClose();
   };
 
+  const getDurationIcon = (dur: DurationType) => {
+    switch (dur) {
+      case 'w': return '𝅝';
+      case 'h': return '𝅗𝅥';
+      case 'q': return '𝅘𝅥';
+      case '8': return '𝅘𝅥𝅮';
+      case '16': return '𝅘𝅥𝅯';
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-fade-in">
+    <div 
+      className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-fade-in"
+      onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}
+    >
+      {/* Cursor Flotante en PC mostrando la figura seleccionada */}
+      {mousePos && (
+        <div 
+          className="fixed pointer-events-none z-[10000] hidden md:flex items-center gap-1 bg-amber-600 text-white px-2 py-1 rounded-lg text-xs font-black shadow-lg transform -translate-x-1/2 -translate-y-10 transition-transform"
+          style={{ left: mousePos.x, top: mousePos.y }}
+        >
+          <span className="text-base">{getDurationIcon(selectedDuration)}</span>
+          <span>{isDotted ? '.' : ''}{selectedAccidental}</span>
+        </div>
+      )}
+
       <div className="bg-[#fdfbf7] border border-amber-200 rounded-t-3xl sm:rounded-3xl w-full max-w-5xl h-[95vh] sm:h-[90vh] flex flex-col shadow-2xl overflow-hidden">
         
         {/* Cabecera del Editor ArmonIA App */}
@@ -260,7 +280,7 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
             </div>
             <div>
               <h3 className="font-extrabold text-sm text-white leading-tight">Editor ArmonIA App</h3>
-              <p className="text-[10px] text-amber-400 font-bold">Alineación Nativa de Clave & Notas</p>
+              <p className="text-[10px] text-amber-400 font-bold">Atajos PC: 1-5 (Figuras) · . (Puntillo) · Backspace</p>
             </div>
           </div>
 
@@ -387,7 +407,7 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
               </div>
 
               {/* Pantalla del Pentagrama (Con iframe OSMD oficial de ArmonIA-App) */}
-              <div className="flex-1 min-h-[260px] bg-white rounded-2xl border border-amber-200/90 shadow-inner overflow-hidden relative">
+              <div className="flex-1 min-h-[260px] bg-white rounded-2xl border border-amber-200/90 shadow-inner overflow-hidden relative cursor-crosshair">
                 <iframe
                   ref={iframeRef}
                   srcDoc={editorOsmdHtml}
@@ -408,7 +428,7 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
                 setSelectedAccidental={setSelectedAccidental}
                 selectedOctave={selectedOctave}
                 setSelectedOctave={setSelectedOctave}
-                onAddNote={handleAddNoteFromKeyboard}
+                onAddNote={(pitch) => handleAddNoteToExistingMeasures(pitch)}
                 onDeleteLastNote={handleRemoveLastNote}
               />
             </>
@@ -441,7 +461,7 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
                 <label 
                   onClick={() => setExportMode('custom')}
                   className={`p-4 rounded-2xl border-2 cursor-pointer block transition-all ${
-                    exportMode === 'custom' ? 'bg-amber-50 border-amber-600 text-amber-950 font-bold shadow-sm' : 'bg-white border-amber-200 text-slate-700'
+                    exportMode === 'custom' ? 'bg-amber-50 border-amber-600 text-amber-950 font-bold shadow-sm' : 'bg-[#fdfbf7] border-amber-200 text-slate-700'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
