@@ -9,6 +9,7 @@ import { ScoreData, convertJsonToMusicXML } from '../../services/musicxml';
 import { editorOsmdHtml } from '../../services/webviewTemplates';
 import { EditorKeyboard } from './EditorKeyboard';
 import { getMeasureCapacityIn16ths } from '../../services/rhythmEngine';
+import { StaveBlockComponent } from './StaveBlockComponent';
 
 interface Props {
   isOpen: boolean;
@@ -25,16 +26,15 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [currentBlock, setCurrentBlock] = useState<StaveBlock>(initialBlock);
-  const [activeVoiceIndex, setActiveVoiceIndex] = useState<number>(0);
-
-  // Modos de edición de ArmonIA-App: 'pencil' (Lápiz) | 'select' (Mover / Botones)
   const [editMode, setEditMode] = useState<'pencil' | 'select'>('pencil');
+
+  // Teclado ArmonIA
   const [selectedDuration, setSelectedDuration] = useState<DurationType>('q');
   const [isDotted, setIsDotted] = useState<boolean>(false);
   const [selectedAccidental, setSelectedAccidental] = useState<PitchAccidental>('');
   const [selectedOctave, setSelectedOctave] = useState<number>(4);
 
-  // Exportar compases modal step
+  // Pasos del modal: 'workspace' (Edición ArmonIA) | 'export-select' (Elegir compases)
   const [step, setStep] = useState<'workspace' | 'export-select'>('workspace');
   const [exportMode, setExportMode] = useState<'all' | 'custom'>('all');
   const [startMeasure, setStartMeasure] = useState<number>(1);
@@ -42,7 +42,6 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
 
   if (!isOpen) return null;
 
-  // Renderizar partitura en OpenSheetMusicDisplay a través del WebView Iframe de ArmonIA-App
   const buildScoreData = (block: StaveBlock): ScoreData => {
     return {
       title: block.title || 'Ejercicio de Armonía',
@@ -72,7 +71,7 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
     };
   };
 
-  useEffect(() => {
+  const sendXmlToIframe = () => {
     if (iframeRef.current && iframeRef.current.contentWindow) {
       const xmlString = convertJsonToMusicXML(buildScoreData(currentBlock));
       iframeRef.current.contentWindow.postMessage(
@@ -80,9 +79,12 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
         '*'
       );
     }
+  };
+
+  useEffect(() => {
+    sendXmlToIframe();
   }, [currentBlock]);
 
-  // Manejar cambio de modo (Lápiz / Mover)
   const handleToggleEditMode = (mode: 'pencil' | 'select') => {
     setEditMode(mode);
     if (iframeRef.current && iframeRef.current.contentWindow) {
@@ -93,7 +95,6 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
     }
   };
 
-  // Convertir figura a semicorcheas
   const durationTo16ths = (dur: DurationType, dotted: boolean = false): number => {
     let base = 4;
     switch (dur) {
@@ -106,7 +107,7 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
     return dotted ? base * 1.5 : base;
   };
 
-  // Inserción de notas desde Teclado ArmonIA
+  // Inserción de notas desde el teclado táctil de ArmonIA
   const handleAddNoteFromKeyboard = (pitch: string) => {
     const measures = [...currentBlock.measures];
     let targetIdx = measures.length - 1;
@@ -200,7 +201,7 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
     <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-fade-in">
       <div className="bg-[#fdfbf7] border border-amber-200 rounded-t-3xl sm:rounded-3xl w-full max-w-5xl h-[95vh] sm:h-[90vh] flex flex-col shadow-2xl overflow-hidden">
         
-        {/* Cabecera idéntica al Workspace de ArmonIA-App */}
+        {/* Cabecera del Editor ArmonIA App */}
         <div className="p-3 sm:p-4 bg-[#14141e] text-white flex items-center justify-between shrink-0 border-b border-slate-800">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-amber-600 flex items-center justify-center text-white font-extrabold shadow-md shadow-amber-600/30">
@@ -208,7 +209,7 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
             </div>
             <div>
               <h3 className="font-extrabold text-sm text-white leading-tight">Editor ArmonIA App</h3>
-              <p className="text-[10px] text-amber-400 font-bold">Motor OSMD WebView con Lápiz Táctil</p>
+              <p className="text-[10px] text-amber-400 font-bold">Lápiz con Cruceta a Pantalla Completa</p>
             </div>
           </div>
 
@@ -236,13 +237,12 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Cuerpo Principal: OSMD WebView + Teclado de ArmonIA */}
+        {/* Cuerpo Principal del Editor */}
         <div className="flex-1 overflow-y-auto bg-[#fdfbf7] flex flex-col justify-between p-2 sm:p-4 space-y-3">
           {step === 'workspace' ? (
             <>
-              {/* Barra de Ajustes Rápidos (Clave, Métrica, Modo Lápiz / Mover) */}
+              {/* Barra de Ajustes Rápidos */}
               <div className="p-2.5 bg-[#f8f5ee] border border-amber-200/90 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs">
-                {/* Selector de Modo (Lápiz vs Mover) */}
                 <div className="flex rounded-xl bg-white p-1 border border-amber-200 font-bold">
                   <button
                     onClick={() => handleToggleEditMode('pencil')}
@@ -250,7 +250,7 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
                       editMode === 'pencil' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-700'
                     }`}
                   >
-                    ✏️ Lápiz
+                    ✏️ Lápiz (Cruceta)
                   </button>
                   <button
                     onClick={() => handleToggleEditMode('select')}
@@ -262,7 +262,6 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
                   </button>
                 </div>
 
-                {/* Ajustes de Clave & Métrica */}
                 <div className="flex items-center gap-2">
                   <select
                     value={currentBlock.clef}
@@ -286,12 +285,13 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
                 </div>
               </div>
 
-              {/* Contenedor WebView iframe de OpenSheetMusicDisplay con Lápiz & Minimapa */}
+              {/* Pantalla del Pentagrama (Con iframe OSMD + Cruceta Completa) */}
               <div className="flex-1 min-h-[260px] bg-white rounded-2xl border border-amber-200/90 shadow-inner overflow-hidden relative">
                 <iframe
                   ref={iframeRef}
                   srcDoc={editorOsmdHtml}
-                  title="ArmonIA OSMD Engine"
+                  onLoad={sendXmlToIframe}
+                  title="ArmonIA OSMD Engine with Full Crosshair"
                   className="w-full h-full min-h-[260px] border-none"
                   sandbox="allow-scripts allow-same-origin"
                 />
@@ -312,7 +312,7 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
               />
             </>
           ) : (
-            /* Diálogo de Confirmación: Exportar compases a la hoja */
+            /* Diálogo de Confirmación: Exportar compases */
             <div className="p-6 max-w-md mx-auto space-y-5 text-center my-auto">
               <div className="w-14 h-14 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center mx-auto shadow-inner border border-amber-200">
                 <Layers size={28} />

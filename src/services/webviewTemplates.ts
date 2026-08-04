@@ -14,9 +14,12 @@ export const editorOsmdHtml = `
         justify-content: center;
         align-items: center;
         overflow: auto;
+        user-select: none;
+        -webkit-user-select: none;
       }
       #score-container {
         width: 100%;
+        min-height: 220px;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -31,108 +34,111 @@ export const editorOsmdHtml = `
         max-width: 98% !important;
         height: auto !important;
         overflow: visible !important;
-        -webkit-touch-callout: none;
-        -webkit-user-select: none;
-        user-select: none;
       }
       .selected-note, .selected-note * { fill: #d97706 !important; stroke: #d97706 !important; }
-      #pencil-ghost {
+
+      /* Cruceta de Lápiz a Pantalla Completa (Full Viewport Crosshair) */
+      #full-crosshair-h {
         position: fixed;
+        left: 0; right: 0;
+        height: 2px;
+        background: rgba(217, 119, 6, 0.85);
         pointer-events: none;
         display: none;
         z-index: 9999;
       }
-      #pencil-ghost .cross {
-        position: absolute;
-        left: 0; top: 0;
-        width: 26px; height: 26px;
-        transform: translate(-50%, -50%);
+      #full-crosshair-v {
+        position: fixed;
+        top: 0; bottom: 0;
+        width: 2px;
+        background: rgba(217, 119, 6, 0.85);
+        pointer-events: none;
+        display: none;
+        z-index: 9999;
       }
-      #pencil-ghost .cross::before, #pencil-ghost .cross::after {
-        content: '';
-        position: absolute;
+      #crosshair-badge {
+        position: fixed;
+        pointer-events: none;
+        display: none;
+        z-index: 10000;
         background: #d97706;
-      }
-      #pencil-ghost .cross::before { left: 50%; top: 0; width: 2px; height: 100%; transform: translateX(-50%); }
-      #pencil-ghost .cross::after { top: 50%; left: 0; width: 100%; height: 2px; transform: translateY(-50%); }
-      #pencil-ghost .label {
-        position: absolute;
-        left: 0; top: -34px;
-        transform: translateX(-50%);
-        background: #d97706;
-        color: #fff;
-        font-size: 12px;
-        font-weight: bold;
-        padding: 3px 7px;
-        border-radius: 6px;
+        color: #ffffff;
+        font-size: 13px;
+        font-weight: 800;
+        padding: 4px 8px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(217, 119, 6, 0.4);
+        transform: translate(-50%, -140%);
         white-space: nowrap;
       }
-      #pencil-ghost .connector {
-        position: absolute;
-        left: 0; top: 0;
-        width: 2px;
-        background: #d97706CC;
-        transform: translateX(-50%);
-      }
-      #pencil-ghost .touch-dot {
-        position: absolute;
-        left: 0; top: 0;
-        width: 10px; height: 10px;
+      #crosshair-dot {
+        position: fixed;
+        pointer-events: none;
+        display: none;
+        z-index: 10000;
+        width: 14px; height: 14px;
         border-radius: 50%;
         background: #d97706;
-        border: 2px solid #fff;
+        border: 2px solid #ffffff;
         transform: translate(-50%, -50%);
-      }
-      #pencil-minimap {
-        position: fixed;
-        left: 10px; bottom: 10px;
-        background: #fff;
-        border: 1px solid #ccc;
-        border-radius: 10px;
-        padding: 6px 8px 4px;
-        display: none;
-        pointer-events: none;
-        z-index: 9999;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.18);
-        text-align: center;
-      }
-      #minimap-label {
-        font-size: 12px;
-        font-weight: 800;
-        color: #333;
-        margin-top: 2px;
+        box-shadow: 0 0 10px rgba(217, 119, 6, 0.8);
       }
     </style>
   </head>
   <body>
     <div id="score-container"></div>
-    <div id="pencil-ghost">
-      <div class="connector" id="pencil-ghost-connector"></div>
-      <div class="cross"></div>
-      <div class="label" id="pencil-ghost-label"></div>
-      <div class="touch-dot" id="pencil-ghost-dot"></div>
-    </div>
-    <div id="pencil-minimap">
-      <svg id="minimap-svg" viewBox="0 0 100 120" width="86" height="103">
-        <line x1="20" y1="30" x2="80" y2="30" stroke="#333" stroke-width="1.5"/>
-        <line x1="20" y1="42" x2="80" y2="42" stroke="#333" stroke-width="1.5"/>
-        <line x1="20" y1="54" x2="80" y2="54" stroke="#333" stroke-width="1.5"/>
-        <line x1="20" y1="66" x2="80" y2="66" stroke="#333" stroke-width="1.5"/>
-        <line x1="20" y1="78" x2="80" y2="78" stroke="#333" stroke-width="1.5"/>
-        <ellipse id="minimap-note" cx="50" cy="30" rx="7.5" ry="5.5" fill="#d97706" style="display:none"/>
-      </svg>
-      <div id="minimap-label"></div>
-    </div>
+
+    {/* Elementos de la Cruceta Completa */}
+    <div id="full-crosshair-h"></div>
+    <div id="full-crosshair-v"></div>
+    <div id="crosshair-badge"></div>
+    <div id="crosshair-dot"></div>
+
     <script>
       window.oncontextmenu = function(e) { e.preventDefault(); return false; };
       var osmd;
-      window.currentSelection = null;
-      window.editMode = 'pencil'; // Modo Lápiz activado por defecto
+      window.editMode = 'pencil';
+      var DIATONIC_STEPS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
 
       function send(type, data) {
         var payload = JSON.stringify({ type: type, data: data });
         if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(payload);
         if (window.parent) window.parent.postMessage(payload, '*');
+      }
+
+      function updateCrosshair(clientX, clientY, pitchText) {
+        var h = document.getElementById('full-crosshair-h');
+        var v = document.getElementById('full-crosshair-v');
+        var badge = document.getElementById('crosshair-badge');
+        var dot = document.getElementById('crosshair-dot');
+
+        h.style.top = clientY + 'px';
+        h.style.display = 'block';
+
+        v.style.left = clientX + 'px';
+        v.style.display = 'block';
+
+        dot.style.left = clientX + 'px';
+        dot.style.top = clientY + 'px';
+        dot.style.display = 'block';
+
+        badge.style.left = clientX + 'px';
+        badge.style.top = clientY + 'px';
+        badge.textContent = pitchText;
+        badge.style.display = 'block';
+      }
+
+      function hideCrosshair() {
+        document.getElementById('full-crosshair-h').style.display = 'none';
+        document.getElementById('full-crosshair-v').style.display = 'none';
+        document.getElementById('crosshair-badge').style.display = 'none';
+        document.getElementById('crosshair-dot').style.display = 'none';
+      }
+
+      function calculatePitchFromY(y) {
+        var pitchScale = ['G5', 'F5', 'E5', 'D5', 'C5', 'B4', 'A4', 'G4', 'F4', 'E4', 'D4', 'C4', 'B3', 'A3'];
+        var idx = Math.max(0, Math.min(pitchScale.length - 1, Math.floor(y / 14)));
+        return pitchScale[idx];
       }
 
       window.onload = function() {
@@ -149,6 +155,32 @@ export const editorOsmdHtml = `
           osmd.rules.DrawPartNames = false;
           send('WV_READY', 'Ready');
         } catch (e) { send('ERROR', 'Init: ' + e.message); }
+
+        var container = document.body;
+        var isDragging = false;
+
+        function handlePointerMove(e) {
+          if (window.editMode !== 'pencil') return;
+          var x = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+          var y = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+          if (!x && !y) return;
+
+          var pitch = calculatePitchFromY(y);
+          updateCrosshair(x, y, pitch);
+        }
+
+        container.addEventListener('mousemove', handlePointerMove);
+        container.addEventListener('touchmove', function(e) {
+          if (window.editMode === 'pencil') {
+            e.preventDefault();
+            handlePointerMove(e);
+          }
+        }, { passive: false });
+
+        container.addEventListener('mouseleave', hideCrosshair);
+        container.addEventListener('touchend', function() {
+          hideCrosshair();
+        });
       };
 
       window.addEventListener('message', function(event) {
@@ -161,12 +193,15 @@ export const editorOsmdHtml = `
             if (data.trim().startsWith('<?xml')) { finalContent = data; }
             else { finalContent = decodeURIComponent(escape(atob(data))); }
 
-            osmd.load(finalContent).then(function() {
-              osmd.render();
-              send('LOAD_COMPLETE', 'Done');
-            }).catch(function(err) { send('ERROR', 'Load: ' + err); });
+            if (osmd) {
+              osmd.load(finalContent).then(function() {
+                osmd.render();
+                send('LOAD_COMPLETE', 'Done');
+              }).catch(function(err) { send('ERROR', 'Load: ' + err); });
+            }
           } else if (msg.type === 'SET_EDIT_MODE') {
             window.editMode = msg.mode;
+            if (msg.mode !== 'pencil') hideCrosshair();
           }
         } catch (e) { send('ERROR', 'Runtime: ' + e.message); }
       });
