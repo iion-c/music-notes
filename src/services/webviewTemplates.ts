@@ -41,7 +41,7 @@ export const editorOsmdHtml = `<!DOCTYPE html>
         position: fixed;
         left: 0; right: 0;
         height: 1.5px;
-        background: rgba(217, 119, 6, 0.7);
+        background: rgba(217, 119, 6, 0.85);
         pointer-events: none;
         display: none;
         z-index: 9999;
@@ -50,7 +50,7 @@ export const editorOsmdHtml = `<!DOCTYPE html>
         position: fixed;
         top: 0; bottom: 0;
         width: 1.5px;
-        background: rgba(217, 119, 6, 0.7);
+        background: rgba(217, 119, 6, 0.85);
         pointer-events: none;
         display: none;
         z-index: 9999;
@@ -98,6 +98,7 @@ export const editorOsmdHtml = `<!DOCTYPE html>
       window.oncontextmenu = function(e) { e.preventDefault(); return false; };
       var osmd;
       window.editMode = 'pencil';
+      var currentPitchStr = 'C4';
 
       function send(type, data) {
         var payload = JSON.stringify({ type: type, data: data });
@@ -134,9 +135,18 @@ export const editorOsmdHtml = `<!DOCTYPE html>
         document.getElementById('crosshair-dot').style.display = 'none';
       }
 
-      function calculatePitchFromY(y) {
+      function calculatePitchFromY(clientY) {
+        var svg = document.querySelector('#score-container svg');
         var pitchScale = ['G5', 'F5', 'E5', 'D5', 'C5', 'B4', 'A4', 'G4', 'F4', 'E4', 'D4', 'C4', 'B3', 'A3'];
-        var idx = Math.max(0, Math.min(pitchScale.length - 1, Math.floor(y / 14)));
+
+        if (!svg) return 'C4';
+
+        var rect = svg.getBoundingClientRect();
+        var relativeY = clientY - rect.top;
+        var height = rect.height || 180;
+        var stepHeight = height / pitchScale.length;
+
+        var idx = Math.max(0, Math.min(pitchScale.length - 1, Math.floor(relativeY / stepHeight)));
         return pitchScale[idx];
       }
 
@@ -163,8 +173,18 @@ export const editorOsmdHtml = `<!DOCTYPE html>
           var y = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
           if (!x && !y) return;
 
-          var pitch = calculatePitchFromY(y);
-          updateCrosshair(x, y, pitch);
+          currentPitchStr = calculatePitchFromY(y);
+          updateCrosshair(x, y, currentPitchStr);
+        }
+
+        function handleCommitNote(e) {
+          if (window.editMode !== 'pencil') return;
+          var y = e.clientY || (e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientY : 0);
+          if (y) {
+            currentPitchStr = calculatePitchFromY(y);
+          }
+          send('PENCIL_COMMIT', { pitch: currentPitchStr });
+          hideCrosshair();
         }
 
         container.addEventListener('mousemove', handlePointerMove);
@@ -175,10 +195,15 @@ export const editorOsmdHtml = `<!DOCTYPE html>
           }
         }, { passive: false });
 
-        container.addEventListener('mouseleave', hideCrosshair);
-        container.addEventListener('touchend', function() {
-          hideCrosshair();
+        container.addEventListener('click', handleCommitNote);
+        container.addEventListener('touchend', function(e) {
+          if (window.editMode === 'pencil') {
+            e.preventDefault();
+            handleCommitNote(e);
+          }
         });
+
+        container.addEventListener('mouseleave', hideCrosshair);
       };
 
       window.addEventListener('message', function(event) {

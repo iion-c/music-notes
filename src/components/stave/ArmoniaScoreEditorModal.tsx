@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  X, Check, Music, Settings, HelpCircle, Undo, Redo, 
+  X, Check, Music, Plus, Settings, HelpCircle, Undo, Redo, 
   Trash2, ChevronDown, PenTool, Sparkles, Layers, Sliders
 } from 'lucide-react';
-import type { StaveBlock, DurationType, PitchAccidental } from '../../types/music';
+import type { StaveBlock, DurationType, PitchAccidental, MeasureData } from '../../types/music';
 import { CLEF_NAMES, TIME_SIGNATURES, KEY_SIGNATURES } from '../../types/music';
 import { ScoreData, convertJsonToMusicXML } from '../../services/musicxml';
 import { editorOsmdHtml } from '../../services/webviewTemplates';
 import { EditorKeyboard } from './EditorKeyboard';
 import { getMeasureCapacityIn16ths } from '../../services/rhythmEngine';
-import { StaveBlockComponent } from './StaveBlockComponent';
 
 interface Props {
   isOpen: boolean;
@@ -28,19 +27,56 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
   const [currentBlock, setCurrentBlock] = useState<StaveBlock>(initialBlock);
   const [editMode, setEditMode] = useState<'pencil' | 'select'>('pencil');
 
+  // Pasos del modal: 'initial-measures' (Elección inicial) | 'workspace' (Edición ArmonIA) | 'export-select' (Elegir compases)
+  const [step, setStep] = useState<'initial-measures' | 'workspace' | 'export-select'>('initial-measures');
+  const [initialMeasureCount, setInitialMeasureCount] = useState<number>(4);
+
   // Teclado ArmonIA
   const [selectedDuration, setSelectedDuration] = useState<DurationType>('q');
   const [isDotted, setIsDotted] = useState<boolean>(false);
   const [selectedAccidental, setSelectedAccidental] = useState<PitchAccidental>('');
   const [selectedOctave, setSelectedOctave] = useState<number>(4);
 
-  // Pasos del modal: 'workspace' (Edición ArmonIA) | 'export-select' (Elegir compases)
-  const [step, setStep] = useState<'workspace' | 'export-select'>('workspace');
   const [exportMode, setExportMode] = useState<'all' | 'custom'>('all');
   const [startMeasure, setStartMeasure] = useState<number>(1);
   const [endMeasure, setEndMeasure] = useState<number>(initialBlock.measures.length || 1);
 
   if (!isOpen) return null;
+
+  // Confirmar cantidad de compases iniciales
+  const handleStartWithMeasures = (count: number) => {
+    const newMeasures: MeasureData[] = [];
+    for (let i = 1; i <= count; i++) {
+      newMeasures.push({
+        id: `m-${Date.now()}-${i}`,
+        measureNumber: i,
+        notes: [],
+        harmonicAnalysis: { measureNumber: i }
+      });
+    }
+    setCurrentBlock({
+      ...currentBlock,
+      measures: newMeasures,
+      updatedAt: Date.now()
+    });
+    setStep('workspace');
+  };
+
+  // Botón "+ Poner más compases"
+  const handleAddMoreMeasures = () => {
+    const newMeasureNum = currentBlock.measures.length + 1;
+    const autoMeasure: MeasureData = {
+      id: `m-${Date.now()}-${newMeasureNum}`,
+      measureNumber: newMeasureNum,
+      notes: [],
+      harmonicAnalysis: { measureNumber: newMeasureNum }
+    };
+    setCurrentBlock({
+      ...currentBlock,
+      measures: [...currentBlock.measures, autoMeasure],
+      updatedAt: Date.now()
+    });
+  };
 
   const buildScoreData = (block: StaveBlock): ScoreData => {
     return {
@@ -54,13 +90,13 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
           clef: block.clef,
           measures: block.measures.map(m => ({
             number: m.measureNumber,
-            notes: m.notes.map(n => ({
+            notes: m.notes.length > 0 ? m.notes.map(n => ({
               id: n.id,
               pitch: n.isRest ? 'R' : (n.keys[0] ? n.keys[0].replace('/', '').toUpperCase() : 'C4'),
               type: n.isRest ? 'rest' : 'note',
               duration: n.duration === 'w' ? 16 : n.duration === 'h' ? 8 : n.duration === 'q' ? 4 : n.duration === '8' ? 2 : 1,
               dotted: n.isDotted
-            }))
+            })) : [{ id: `rest-${m.measureNumber}`, pitch: 'R', type: 'rest', duration: 16, xmlType: 'whole' }]
           }))
         }
       ],
@@ -82,8 +118,23 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
   };
 
   useEffect(() => {
-    sendXmlToIframe();
-  }, [currentBlock]);
+    if (step === 'workspace') sendXmlToIframe();
+  }, [currentBlock, step]);
+
+  // Escuchar toque en la cruceta de Lápiz
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      try {
+        const msg = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        if (msg.type === 'PENCIL_COMMIT' && msg.data?.pitch) {
+          const formattedPitch = `${msg.data.pitch.slice(0,-1).toLowerCase()}/${msg.data.pitch.slice(-1)}`;
+          handleAddNoteFromKeyboard(formattedPitch);
+        }
+      } catch (e) {}
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [currentBlock, selectedDuration, isDotted, selectedAccidental]);
 
   const handleToggleEditMode = (mode: 'pencil' | 'select') => {
     setEditMode(mode);
@@ -107,7 +158,7 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
     return dotted ? base * 1.5 : base;
   };
 
-  // Inserción de notas desde el teclado táctil de ArmonIA
+  // Inserción de notas desde Teclado ArmonIA o toque de cruceta
   const handleAddNoteFromKeyboard = (pitch: string) => {
     const measures = [...currentBlock.measures];
     let targetIdx = measures.length - 1;
@@ -209,7 +260,7 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
             </div>
             <div>
               <h3 className="font-extrabold text-sm text-white leading-tight">Editor ArmonIA App</h3>
-              <p className="text-[10px] text-amber-400 font-bold">Lápiz con Cruceta a Pantalla Completa</p>
+              <p className="text-[10px] text-amber-400 font-bold">Lápiz con Cruceta & Elección de Compases</p>
             </div>
           </div>
 
@@ -239,9 +290,51 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
 
         {/* Cuerpo Principal del Editor */}
         <div className="flex-1 overflow-y-auto bg-[#fdfbf7] flex flex-col justify-between p-2 sm:p-4 space-y-3">
-          {step === 'workspace' ? (
+          {step === 'initial-measures' ? (
+            /* Diálogo Inicial: ¿Cuántos compases necesitas? */
+            <div className="p-6 max-w-md mx-auto space-y-5 text-center my-auto animate-fade-in">
+              <div className="w-14 h-14 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center mx-auto shadow-inner border border-amber-200">
+                <Music size={28} />
+              </div>
+
+              <div>
+                <h4 className="text-lg font-extrabold text-slate-900 mb-1">¿Cuántos compases necesitas?</h4>
+                <p className="text-xs text-slate-600">Configura los compases para comenzar a trabajar en tu ejercicio.</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs font-extrabold">
+                {[4, 8, 12, 16].map(num => (
+                  <button
+                    key={num}
+                    onClick={() => handleStartWithMeasures(num)}
+                    className="p-3.5 rounded-2xl bg-white border-2 border-amber-200 hover:border-amber-600 text-slate-800 hover:bg-amber-50 shadow-sm transition-all"
+                  >
+                    <span className="text-base block">{num} Compases</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="pt-2 border-t border-amber-200/80 flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-700">Otro número:</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={64}
+                  value={initialMeasureCount}
+                  onChange={(e) => setInitialMeasureCount(parseInt(e.target.value, 10) || 4)}
+                  className="w-20 p-2 bg-white border border-amber-300 rounded-xl text-center font-bold text-slate-900 shadow-sm"
+                />
+                <button
+                  onClick={() => handleStartWithMeasures(initialMeasureCount)}
+                  className="flex-1 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-md shadow-amber-600/20"
+                >
+                  Comenzar ({initialMeasureCount})
+                </button>
+              </div>
+            </div>
+          ) : step === 'workspace' ? (
             <>
-              {/* Barra de Ajustes Rápidos */}
+              {/* Barra de Ajustes Rápidos & Botón + Poner más compases */}
               <div className="p-2.5 bg-[#f8f5ee] border border-amber-200/90 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs">
                 <div className="flex rounded-xl bg-white p-1 border border-amber-200 font-bold">
                   <button
@@ -263,6 +356,14 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleAddMoreMeasures}
+                    className="px-3 py-1 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold flex items-center gap-1 shadow-sm"
+                  >
+                    <Plus size={13} />
+                    <span>Poner más compases</span>
+                  </button>
+
                   <select
                     value={currentBlock.clef}
                     onChange={(e) => setCurrentBlock({ ...currentBlock, clef: e.target.value as any })}
