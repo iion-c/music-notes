@@ -1,5 +1,4 @@
-export const editorOsmdHtml = `
-<!DOCTYPE html>
+export const editorOsmdHtml = `<!DOCTYPE html>
 <html>
   <head>
     <meta charset="utf-8" />
@@ -37,12 +36,12 @@ export const editorOsmdHtml = `
       }
       .selected-note, .selected-note * { fill: #d97706 !important; stroke: #d97706 !important; }
 
-      /* Cruceta de Lápiz a Pantalla Completa (Full Viewport Crosshair) */
+      /* Cruceta de Lápiz Limpia a Pantalla Completa */
       #full-crosshair-h {
         position: fixed;
         left: 0; right: 0;
-        height: 2px;
-        background: rgba(217, 119, 6, 0.85);
+        height: 1.5px;
+        background: rgba(217, 119, 6, 0.7);
         pointer-events: none;
         display: none;
         z-index: 9999;
@@ -50,8 +49,8 @@ export const editorOsmdHtml = `
       #full-crosshair-v {
         position: fixed;
         top: 0; bottom: 0;
-        width: 2px;
-        background: rgba(217, 119, 6, 0.85);
+        width: 1.5px;
+        background: rgba(217, 119, 6, 0.7);
         pointer-events: none;
         display: none;
         z-index: 9999;
@@ -63,11 +62,12 @@ export const editorOsmdHtml = `
         z-index: 10000;
         background: #d97706;
         color: #ffffff;
-        font-size: 13px;
+        font-family: system-ui, -apple-system, sans-serif;
+        font-size: 12px;
         font-weight: 800;
-        padding: 4px 8px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(217, 119, 6, 0.4);
+        padding: 3px 8px;
+        border-radius: 6px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.25);
         transform: translate(-50%, -140%);
         white-space: nowrap;
       }
@@ -76,19 +76,19 @@ export const editorOsmdHtml = `
         pointer-events: none;
         display: none;
         z-index: 10000;
-        width: 14px; height: 14px;
+        width: 12px; height: 12px;
         border-radius: 50%;
         background: #d97706;
         border: 2px solid #ffffff;
         transform: translate(-50%, -50%);
-        box-shadow: 0 0 10px rgba(217, 119, 6, 0.8);
+        box-shadow: 0 0 6px rgba(217, 119, 6, 0.6);
       }
     </style>
   </head>
   <body>
     <div id="score-container"></div>
 
-    {/* Elementos de la Cruceta Completa */}
+    <!-- Cruceta Completa -->
     <div id="full-crosshair-h"></div>
     <div id="full-crosshair-v"></div>
     <div id="crosshair-badge"></div>
@@ -98,7 +98,6 @@ export const editorOsmdHtml = `
       window.oncontextmenu = function(e) { e.preventDefault(); return false; };
       var osmd;
       window.editMode = 'pencil';
-      var DIATONIC_STEPS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
 
       function send(type, data) {
         var payload = JSON.stringify({ type: type, data: data });
@@ -157,7 +156,6 @@ export const editorOsmdHtml = `
         } catch (e) { send('ERROR', 'Init: ' + e.message); }
 
         var container = document.body;
-        var isDragging = false;
 
         function handlePointerMove(e) {
           if (window.editMode !== 'pencil') return;
@@ -207,5 +205,4 @@ export const editorOsmdHtml = `
       });
     </script>
   </body>
-</html>
-`;
+</html>`;
