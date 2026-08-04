@@ -3,7 +3,7 @@ import {
   X, Check, Music, Plus, Settings, HelpCircle, Undo, Redo, 
   Trash2, ChevronDown, PenTool, Sparkles, Layers, Sliders
 } from 'lucide-react';
-import type { StaveBlock, DurationType, PitchAccidental, MeasureData } from '../../types/music';
+import type { StaveBlock, DurationType, PitchAccidental, MeasureData, MusicNoteItem } from '../../types/music';
 import { CLEF_NAMES, TIME_SIGNATURES, KEY_SIGNATURES } from '../../types/music';
 import { ScoreData, convertJsonToMusicXML } from '../../services/musicxml';
 import { editorOsmdHtml } from '../../services/webviewTemplates';
@@ -77,7 +77,9 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
       newMeasures.push({
         id: `m-${Date.now()}-${i}`,
         measureNumber: i,
-        notes: [],
+        notes: [
+          { id: `rest-${Date.now()}-${i}`, keys: ['b/4'], duration: 'w', isRest: true }
+        ],
         harmonicAnalysis: { measureNumber: i }
       });
     }
@@ -95,7 +97,9 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
     const autoMeasure: MeasureData = {
       id: `m-${Date.now()}-${newMeasureNum}`,
       measureNumber: newMeasureNum,
-      notes: [],
+      notes: [
+        { id: `rest-${Date.now()}-${newMeasureNum}`, keys: ['b/4'], duration: 'w', isRest: true }
+      ],
       harmonicAnalysis: { measureNumber: newMeasureNum }
     };
     setCurrentBlock({
@@ -185,7 +189,7 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
     return dotted ? base * 1.5 : base;
   };
 
-  // Inserción secuencial ordenada de compases (Compás 1 -> Compás 2 -> Compás 3 -> Compás 4)
+  // Inserción secuencial ordenada reemplazando silencios
   const handleAddNoteToExistingMeasures = (pitch: string) => {
     const measures = [...currentBlock.measures];
     if (measures.length === 0) return;
@@ -194,7 +198,7 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
     const note16ths = durationTo16ths(selectedDuration, isDotted);
     const isRest = pitch === 'R';
 
-    const newNote = {
+    const newNote: MusicNoteItem = {
       id: `n-${Date.now()}`,
       keys: isRest ? ['b/4'] : [pitch],
       duration: selectedDuration,
@@ -203,39 +207,49 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
       accidental: isRest ? undefined : (selectedAccidental || undefined)
     };
 
-    // 1. Buscar el PRIMER compás desde el inicio (Compás 1) que tenga espacio suficiente
+    // 1. Buscar el PRIMER compás desde el inicio que contenga silencios o espacio libre
     let targetIdx = measures.findIndex(m => {
-      const totalInMeasure = m.notes.reduce((acc, n) => acc + durationTo16ths(n.duration as any, n.isDotted), 0);
-      return totalInMeasure + note16ths <= capacity16ths;
+      const realNotes = m.notes.filter(n => !n.isRest);
+      const totalRealDur = realNotes.reduce((acc, n) => acc + durationTo16ths(n.duration as any, n.isDotted), 0);
+      return totalRealDur + note16ths <= capacity16ths;
     });
 
     if (targetIdx !== -1) {
-      measures[targetIdx] = {
-        ...measures[targetIdx],
-        notes: [...measures[targetIdx].notes, newNote]
-      };
-    } else {
-      // 2. Si ningún compás tiene espacio suficiente pero alguno está incompleto
-      const incompleteIdx = measures.findIndex(m => {
-        const totalInMeasure = m.notes.reduce((acc, n) => acc + durationTo16ths(n.duration as any, n.isDotted), 0);
-        return totalInMeasure < capacity16ths;
-      });
+      const realNotes = measures[targetIdx].notes.filter(n => !n.isRest);
+      const newRealNotes = [...realNotes, newNote];
+      const totalDur = newRealNotes.reduce((acc, n) => acc + durationTo16ths(n.duration as any, n.isDotted), 0);
+      const remaining16ths = capacity16ths - totalDur;
 
-      if (incompleteIdx !== -1) {
-        measures[incompleteIdx] = {
-          ...measures[incompleteIdx],
-          notes: [...measures[incompleteIdx].notes, newNote]
-        };
-      } else {
-        // 3. Si absolutamente TODOS los compases están 100% llenos, crear uno nuevo
-        const newMeasureNum = measures.length + 1;
-        measures.push({
-          id: `m-${Date.now()}-${newMeasureNum}`,
-          measureNumber: newMeasureNum,
-          notes: [newNote],
-          harmonicAnalysis: { measureNumber: newMeasureNum }
+      const finalNotes: MusicNoteItem[] = [...newRealNotes];
+      if (remaining16ths > 0) {
+        let restDur: DurationType = 'q';
+        if (remaining16ths >= 16) restDur = 'w';
+        else if (remaining16ths >= 8) restDur = 'h';
+        else if (remaining16ths >= 4) restDur = 'q';
+        else if (remaining16ths >= 2) restDur = '8';
+        else restDur = '16';
+
+        finalNotes.push({
+          id: `rest-${Date.now()}`,
+          keys: ['b/4'],
+          duration: restDur,
+          isRest: true
         });
       }
+
+      measures[targetIdx] = {
+        ...measures[targetIdx],
+        notes: finalNotes
+      };
+    } else {
+      // 2. Si todos los compases están al 100% de notas reales, crear uno nuevo
+      const newMeasureNum = measures.length + 1;
+      measures.push({
+        id: `m-${Date.now()}-${newMeasureNum}`,
+        measureNumber: newMeasureNum,
+        notes: [newNote],
+        harmonicAnalysis: { measureNumber: newMeasureNum }
+      });
     }
 
     setCurrentBlock({ ...currentBlock, measures, updatedAt: Date.now() });
@@ -246,13 +260,27 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
     const measures = [...currentBlock.measures];
     if (measures.length === 0) return;
 
-    // Buscar el último compás que contenga notas
-    const lastFilledIdx = [...measures].reverse().findIndex(m => m.notes.length > 0);
+    const lastFilledIdx = [...measures].reverse().findIndex(m => m.notes.some(n => !n.isRest));
     if (lastFilledIdx !== -1) {
       const actualIdx = measures.length - 1 - lastFilledIdx;
       const measure = { ...measures[actualIdx] };
-      measure.notes = measure.notes.slice(0, -1);
-      measures[actualIdx] = measure;
+      const realNotes = measure.notes.filter(n => !n.isRest).slice(0, -1);
+      
+      const capacity16ths = getMeasureCapacityIn16ths(currentBlock.timeSignature || '4/4');
+      const totalDur = realNotes.reduce((acc, n) => acc + durationTo16ths(n.duration as any, n.isDotted), 0);
+      const remaining16ths = capacity16ths - totalDur;
+
+      const finalNotes: MusicNoteItem[] = [...realNotes];
+      if (remaining16ths > 0) {
+        finalNotes.push({
+          id: `rest-${Date.now()}`,
+          keys: ['b/4'],
+          duration: 'w',
+          isRest: true
+        });
+      }
+
+      measures[actualIdx] = { ...measure, notes: finalNotes };
       setCurrentBlock({ ...currentBlock, measures, updatedAt: Date.now() });
     }
   };

@@ -301,7 +301,7 @@ export const editorOsmdHtml = `<!DOCTYPE html>
         } catch (e) { return null; }
       }
 
-      // Alineación de altura vertical calibrada pixel-perfect
+      // Desplazamiento ajustado hacia arriba (-0.25) para calibración exacta de altura del puntero
       function pitchFromUnitY(partIndex, unitY) {
         const topLineUnitY = getStaffTopLineUnitY(partIndex, unitY);
         if (topLineUnitY === null) return null;
@@ -310,8 +310,7 @@ export const editorOsmdHtml = `<!DOCTYPE html>
           ? { step: 'A', octave: 3 }
           : { step: 'F', octave: 5 };
 
-        // Calibración exacta de offset vertical
-        const calibratedUnitY = unitY + 0.25;
+        const calibratedUnitY = unitY - 0.25;
         const stepsFromTop = Math.round((topLineUnitY - calibratedUnitY) / 0.5);
         const letterIdx = DIATONIC_STEPS.indexOf(topRef.step);
         const totalIdx = letterIdx + stepsFromTop;
