@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Play, Square, Camera, ChevronDown, ChevronUp, Trash2, 
-  Settings, Music, Copy, PenTool, MousePointerClick
+  Settings, Music, Copy, PenTool
 } from 'lucide-react';
 import type { 
   StaveBlock, MeasureData, MusicNoteItem, ClefType, 
   DurationType, PitchAccidental 
 } from '../../types/music';
 import { CLEF_NAMES, KEY_SIGNATURES, TIME_SIGNATURES } from '../../types/music';
-import { renderStaveToContainer } from '../../services/vexRender';
 import { audioSynth } from '../../services/audioSynth';
 import { downloadElementScreenshot, copyElementToClipboard } from '../../services/screenshot';
 import { EditorKeyboard } from './EditorKeyboard';
 import { getMeasureCapacityIn16ths } from '../../services/rhythmEngine';
+import { OsmdWebViewEditor } from './OsmdWebViewEditor';
 
 interface Props {
   staveBlock: StaveBlock;
@@ -27,7 +27,6 @@ export const StaveBlockComponent: React.FC<Props> = ({
   onDelete,
   onInsertSnapshotCard 
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
   const blockCardRef = useRef<HTMLDivElement>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
@@ -42,26 +41,6 @@ export const StaveBlockComponent: React.FC<Props> = ({
   const [isDotted, setIsDotted] = useState<boolean>(false);
   const [selectedAccidental, setSelectedAccidental] = useState<PitchAccidental>('');
   const [selectedOctave, setSelectedOctave] = useState<number>(4);
-
-  // Re-renderizar pentagrama en SVG cada vez que el bloque cambia o la nota activa cambia
-  useEffect(() => {
-    if (containerRef.current && !staveBlock.isCollapsed) {
-      renderStaveToContainer(containerRef.current, staveBlock, {
-        activeNotePos,
-        interactive: true
-      });
-    }
-  }, [staveBlock, activeNotePos]);
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (containerRef.current && !staveBlock.isCollapsed) {
-        renderStaveToContainer(containerRef.current, staveBlock, { activeNotePos });
-      }
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [staveBlock, activeNotePos]);
 
   // Reproducción de audio
   const handleTogglePlay = () => {
@@ -187,23 +166,6 @@ export const StaveBlockComponent: React.FC<Props> = ({
     onUpdate({ ...staveBlock, measures, updatedAt: Date.now() });
   };
 
-  // Click directo sobre la imagen/SVG del pentagrama despliega automáticamente el teclado y coloca la nota
-  const handleStaveCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!activeDropdown) setActiveDropdown('notes');
-
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const y = e.clientY - rect.top;
-
-    const pitchScale = ['g/5', 'f/5', 'e/5', 'd/5', 'c/5', 'b/4', 'a/4', 'g/4', 'f/4', 'e/4', 'd/4', 'c/4'];
-    const idx = Math.max(0, Math.min(pitchScale.length - 1, Math.floor(y / 12)));
-    const noteStep = pitchScale[idx].split('/')[0];
-    const oct = pitchScale[idx].split('/')[1];
-
-    const fullPitch = `${noteStep}${selectedAccidental}/${oct}`;
-    handleAddNoteFromKeyboard(fullPitch);
-  };
-
   // Eliminar última nota
   const handleRemoveLastNoteFromSelectedMeasure = () => {
     const measures = [...staveBlock.measures];
@@ -273,9 +235,7 @@ export const StaveBlockComponent: React.FC<Props> = ({
                 {staveBlock.keySignature}
               </span>
               <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200 font-mono">
-                {staveBlock.displayRange.mode === 'custom' 
-                  ? `Compases ${staveBlock.displayRange.startMeasure || 1}-${staveBlock.displayRange.endMeasure || staveBlock.measures.length}`
-                  : `${staveBlock.measures.length} compases`}
+                {staveBlock.measures.length} compases
               </span>
             </div>
           </div>
@@ -351,7 +311,7 @@ export const StaveBlockComponent: React.FC<Props> = ({
             }`}
           >
             <Settings size={14} />
-            <span>Previsualización & Compases ▾</span>
+            <span>Clave & Métrica ▾</span>
           </button>
 
           <button
@@ -401,9 +361,9 @@ export const StaveBlockComponent: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Desplegable 2: Configuración de Compases a Mostrar / Previsualización */}
+      {/* Desplegable 2: Configuración de Clave y Métrica */}
       {activeDropdown === 'settings' && !staveBlock.isCollapsed && (
-        <div className="p-4 bg-amber-50/90 border-b border-amber-200 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs animate-fade-in">
+        <div className="p-4 bg-amber-50/90 border-b border-amber-200 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs animate-fade-in">
           <div>
             <label className="block text-slate-800 mb-1 font-bold">Clave Musical</label>
             <select
@@ -441,60 +401,6 @@ export const StaveBlockComponent: React.FC<Props> = ({
                 <option key={ks.code} value={ks.code}>{ks.name}</option>
               ))}
             </select>
-          </div>
-
-          <div>
-            <label className="block text-slate-800 mb-1 font-bold">Compases a Previsualizar en la Hoja</label>
-            <select
-              value={staveBlock.displayRange.mode}
-              onChange={(e) => onUpdate({ 
-                ...staveBlock, 
-                displayRange: { 
-                  mode: e.target.value as 'all' | 'custom',
-                  startMeasure: 1,
-                  endMeasure: staveBlock.measures.length
-                },
-                updatedAt: Date.now() 
-              })}
-              className="w-full bg-white border border-amber-300 rounded-xl p-2 text-slate-900 font-bold focus:outline-none focus:border-amber-500 shadow-sm"
-            >
-              <option value="all">Ver todos los compases ({staveBlock.measures.length})</option>
-              <option value="custom">Personalizar compases</option>
-            </select>
-
-            {staveBlock.displayRange.mode === 'custom' && (
-              <div className="flex items-center gap-2 mt-2">
-                <input
-                  type="number"
-                  min={1}
-                  max={staveBlock.measures.length}
-                  value={staveBlock.displayRange.startMeasure || 1}
-                  onChange={(e) => onUpdate({
-                    ...staveBlock,
-                    displayRange: {
-                      ...staveBlock.displayRange,
-                      startMeasure: parseInt(e.target.value, 10) || 1
-                    }
-                  })}
-                  className="w-16 bg-white border border-amber-300 rounded-lg p-1 text-center font-bold text-slate-900"
-                />
-                <span className="text-slate-600 font-bold">a</span>
-                <input
-                  type="number"
-                  min={1}
-                  max={staveBlock.measures.length}
-                  value={staveBlock.displayRange.endMeasure || staveBlock.measures.length}
-                  onChange={(e) => onUpdate({
-                    ...staveBlock,
-                    displayRange: {
-                      ...staveBlock.displayRange,
-                      endMeasure: parseInt(e.target.value, 10) || staveBlock.measures.length
-                    }
-                  })}
-                  className="w-16 bg-white border border-amber-300 rounded-lg p-1 text-center font-bold text-slate-900"
-                />
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -542,19 +448,10 @@ export const StaveBlockComponent: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Cuerpo del Pentagrama SVG interactivo en VexFlow */}
+      {/* Renderizado de Partitura mediante el Motor WebView OSMD de ArmonIA-App */}
       {!staveBlock.isCollapsed && (
-        <div 
-          onClick={handleStaveCanvasClick}
-          className="p-4 bg-[#fdfbf7] overflow-x-auto min-h-[170px] flex flex-col items-center justify-center cursor-pointer relative group"
-          title="Toca sobre el pentagrama para abrir el menú y editar notas"
-        >
-          <div className="absolute top-2 right-3 text-[10px] text-amber-800/60 font-semibold flex items-center gap-1 pointer-events-none">
-            <MousePointerClick size={12} />
-            <span>Toca el pentagrama para editar notas</span>
-          </div>
-
-          <div ref={containerRef} className="w-full flex justify-center" />
+        <div className="p-3 bg-[#fdfbf7]">
+          <OsmdWebViewEditor staveBlock={staveBlock} />
         </div>
       )}
     </div>
