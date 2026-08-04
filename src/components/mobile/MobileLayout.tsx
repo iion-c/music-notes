@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   BookOpen, Music, Volume2, Plus, Star, Menu, X, HelpCircle, 
-  User as UserIcon, FolderPlus, Download, Upload, Layers
+  User as UserIcon, FolderPlus, Trash2, Layers
 } from 'lucide-react';
 import type { Notebook, NotePage } from '../../types/music';
 import { MusicNotebook } from '../editor/MusicNotebook';
@@ -42,11 +42,25 @@ export const MobileLayout: React.FC<Props> = ({
   const [newNotebookName, setNewNotebookName] = useState('');
   const [bpm, setBpm] = useState(100);
 
-  // Páginas pertenecientes al cuaderno seleccionado actualmente
+  // Cuaderno Activo
   const activeNotebook = notebooks.find(n => n.id === selectedNotebookId) || notebooks[0];
-  const notebookPages = pages.filter(p => p.notebookId === activeNotebook?.id || !p.notebookId);
 
-  const activePage = pages.find(p => p.id === activePageId) || notebookPages[0] || pages[0];
+  // Páginas aisladas estrictamente para este cuaderno
+  const notebookPages = pages.filter(p => p.notebookId === activeNotebook?.id);
+
+  // Seleccionar automáticamente una página válida cuando se cambia de cuaderno
+  useEffect(() => {
+    if (activeNotebook) {
+      const validPages = pages.filter(p => p.notebookId === activeNotebook.id);
+      if (validPages.length > 0) {
+        if (!validPages.some(p => p.id === activePageId)) {
+          onSelectPage(validPages[0].id);
+        }
+      }
+    }
+  }, [selectedNotebookId, notebooks, pages]);
+
+  const activePage = pages.find(p => p.id === activePageId && p.notebookId === activeNotebook?.id) || notebookPages[0];
 
   const handleBpmChange = (newBpm: number) => {
     setBpm(newBpm);
@@ -61,9 +75,16 @@ export const MobileLayout: React.FC<Props> = ({
     setShowNewNotebookModal(false);
   };
 
+  const handleDeletePageFromList = (e: React.MouseEvent, pageToDelete: NotePage) => {
+    e.stopPropagation();
+    if (window.confirm(`¿Seguro que deseas eliminar la hoja "${pageToDelete.title}"?`)) {
+      onDeletePage(pageToDelete.id);
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen w-screen bg-[#f7f4eb] text-slate-800 font-sans overflow-hidden">
-      {/* Top Header Móvil (Limpio y Responsivo para Android) */}
+      {/* Top Header Móvil (Android Clean) */}
       <div className="flex items-center justify-between px-3 py-2.5 bg-[#f8f5ee] border-b border-amber-200/80 shrink-0 gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <button
@@ -76,7 +97,7 @@ export const MobileLayout: React.FC<Props> = ({
 
           <div className="min-w-0">
             <h1 className="font-extrabold text-xs sm:text-sm text-slate-900 leading-tight truncate">Music Notes</h1>
-            <p className="text-[10px] text-amber-800 font-bold truncate max-w-[120px]">
+            <p className="text-[10px] text-amber-800 font-bold truncate max-w-[130px]">
               {activeNotebook ? activeNotebook.name : 'Mis Cuadernos'}
             </p>
           </div>
@@ -157,10 +178,10 @@ export const MobileLayout: React.FC<Props> = ({
               ))}
             </div>
 
-            {/* Hojas del Cuaderno Activo */}
+            {/* Hojas Aisladas del Cuaderno Activo */}
             <div className="space-y-1 pt-2 border-t border-amber-200">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-extrabold text-amber-900 uppercase">Hojas de Apuntes:</span>
+                <span className="text-[11px] font-extrabold text-amber-900 uppercase">Hojas de {activeNotebook?.name}:</span>
                 <button
                   onClick={() => {
                     onCreatePage(activeNotebook?.id);
@@ -177,20 +198,29 @@ export const MobileLayout: React.FC<Props> = ({
                 <p className="text-slate-400 text-xs italic p-2">Este cuaderno no tiene hojas todavía.</p>
               ) : (
                 notebookPages.map(p => (
-                  <button
+                  <div
                     key={p.id}
                     onClick={() => {
                       onSelectPage(p.id);
                       setShowDrawer(false);
                       setActiveTab('notes');
                     }}
-                    className={`w-full text-left p-2.5 rounded-xl flex items-center justify-between text-xs transition-all ${
+                    className={`w-full text-left p-2.5 rounded-xl flex items-center justify-between text-xs cursor-pointer transition-all ${
                       p.id === activePage?.id ? 'bg-amber-600 text-white font-bold shadow-sm' : 'bg-white text-slate-800 border border-amber-200'
                     }`}
                   >
-                    <span className="truncate">{p.title}</span>
-                    {p.isFavorite && <Star size={12} className="text-amber-400 fill-amber-400 shrink-0" />}
-                  </button>
+                    <span className="truncate flex-1 pr-2">{p.title}</span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {p.isFavorite && <Star size={12} className="text-amber-400 fill-amber-400" />}
+                      <button
+                        onClick={(e) => handleDeletePageFromList(e, p)}
+                        className="p-1 rounded text-rose-500 hover:bg-rose-100"
+                        title="Eliminar Hoja"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
                 ))
               )}
             </div>
@@ -221,8 +251,8 @@ export const MobileLayout: React.FC<Props> = ({
         </button>
       </div>
 
-      {/* Cuerpo Principal del Apunte Móvil */}
-      <div className="flex-1 overflow-y-auto pb-16">
+      {/* Cuerpo Principal del Apunte Móvil (Padding pb-28 para que la barra inferior no tape nada) */}
+      <div className="flex-1 overflow-y-auto pb-28">
         {activeTab === 'notes' && activePage ? (
           <div className="px-2">
             <MusicNotebook
@@ -234,7 +264,7 @@ export const MobileLayout: React.FC<Props> = ({
         ) : activeTab === 'notes' ? (
           <div className="p-8 text-center space-y-3">
             <Layers size={40} className="mx-auto text-amber-600 opacity-60" />
-            <h3 className="font-extrabold text-base text-slate-900">No hay hojas en este cuaderno</h3>
+            <h3 className="font-extrabold text-base text-slate-900">No hay hojas en "{activeNotebook?.name}"</h3>
             <button
               onClick={() => onCreatePage(activeNotebook?.id)}
               className="px-4 py-2 rounded-2xl bg-amber-600 text-white font-extrabold text-xs shadow-md shadow-amber-600/20"

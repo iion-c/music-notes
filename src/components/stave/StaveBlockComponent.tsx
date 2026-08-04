@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Play, Square, Camera, ChevronDown, ChevronUp, Trash2, 
-  Settings, Music, Sliders, Copy, PenTool, MousePointerClick
+  Settings, Music, Copy, PenTool, MousePointerClick
 } from 'lucide-react';
 import type { 
   StaveBlock, MeasureData, MusicNoteItem, ClefType, 
@@ -133,7 +133,6 @@ export const StaveBlockComponent: React.FC<Props> = ({
     const capacity16ths = getMeasureCapacityIn16ths(staveBlock.timeSignature || '4/4');
     let measure = { ...measures[targetIdx] };
 
-    // Calcular duración acumulada actual del compás
     const currentDurationInMeasure = measure.notes.reduce((acc, n) => {
       let d = 4;
       if (typeof n.duration === 'string') d = durationTo16ths(n.duration as any, n.isDotted);
@@ -153,7 +152,6 @@ export const StaveBlockComponent: React.FC<Props> = ({
       accidental: isRest ? undefined : (selectedAccidental || undefined)
     };
 
-    // Si el compás actual ya está lleno (o se llena con esta nota), crear automáticamente un compás nuevo
     if (currentDurationInMeasure + note16ths > capacity16ths && measure.notes.length > 0) {
       const newMeasureNum = measures.length + 1;
       const autoMeasure: MeasureData = {
@@ -169,7 +167,6 @@ export const StaveBlockComponent: React.FC<Props> = ({
       measure.notes = [...measure.notes, newNote];
       measures[targetIdx] = measure;
 
-      // Si al añadir esta nota el compás se llena exactamente, crear automáticamente el siguiente compás vacío preparado
       if (currentDurationInMeasure + note16ths >= capacity16ths) {
         const newMeasureNum = measures.length + 1;
         const autoEmptyMeasure: MeasureData = {
@@ -190,8 +187,10 @@ export const StaveBlockComponent: React.FC<Props> = ({
     onUpdate({ ...staveBlock, measures, updatedAt: Date.now() });
   };
 
-  // Click interactivo en el canvas SVG para colocar nota
+  // Click directo sobre la imagen/SVG del pentagrama despliega automáticamente el teclado y coloca la nota
   const handleStaveCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!activeDropdown) setActiveDropdown('notes');
+
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     const y = e.clientY - rect.top;
@@ -239,7 +238,7 @@ export const StaveBlockComponent: React.FC<Props> = ({
   return (
     <div 
       ref={blockCardRef}
-      className="my-5 rounded-2xl border border-amber-200/90 bg-[#fdfbf7] shadow-lg shadow-amber-950/5 overflow-hidden transition-all duration-200"
+      className="my-4 rounded-2xl border border-amber-200/90 bg-[#fdfbf7] shadow-lg shadow-amber-950/5 overflow-hidden transition-all duration-200"
     >
       {/* Cabecera Responsiva Móvil/Desktop */}
       <div className="flex flex-wrap items-center justify-between p-3 sm:p-4 bg-[#f8f5ee] border-b border-amber-200/60 gap-2">
@@ -256,6 +255,9 @@ export const StaveBlockComponent: React.FC<Props> = ({
             <input 
               type="text" 
               value={staveBlock.title}
+              onFocus={(e) => {
+                if (e.target.value === 'Ejercicio de Armonía') onUpdate({ ...staveBlock, title: '', updatedAt: Date.now() });
+              }}
               onChange={(e) => onUpdate({ ...staveBlock, title: e.target.value, updatedAt: Date.now() })}
               className="bg-transparent text-sm sm:text-base font-bold text-slate-900 focus:outline-none focus:border-b-2 focus:border-amber-500 w-full truncate"
               placeholder="Título del Pentagrama..."
@@ -271,7 +273,9 @@ export const StaveBlockComponent: React.FC<Props> = ({
                 {staveBlock.keySignature}
               </span>
               <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200 font-mono">
-                {staveBlock.measures.length} compases (Auto)
+                {staveBlock.displayRange.mode === 'custom' 
+                  ? `Compases ${staveBlock.displayRange.startMeasure || 1}-${staveBlock.displayRange.endMeasure || staveBlock.measures.length}`
+                  : `${staveBlock.measures.length} compases`}
               </span>
             </div>
           </div>
@@ -311,7 +315,9 @@ export const StaveBlockComponent: React.FC<Props> = ({
 
           {onDelete && (
             <button
-              onClick={onDelete}
+              onClick={() => {
+                if (window.confirm('¿Eliminar este pentagrama?')) onDelete();
+              }}
               className="p-1.5 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 text-xs transition-colors border border-rose-200"
               title="Eliminar Pentagrama"
             >
@@ -345,7 +351,7 @@ export const StaveBlockComponent: React.FC<Props> = ({
             }`}
           >
             <Settings size={14} />
-            <span>Clave & Compases ▾</span>
+            <span>Previsualización & Compases ▾</span>
           </button>
 
           <button
@@ -362,7 +368,7 @@ export const StaveBlockComponent: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Desplegable 1: Teclado de Notas de ArmonIA-App con Auto-Creación de Compases */}
+      {/* Desplegable 1: Teclado de Notas */}
       {activeDropdown === 'notes' && !staveBlock.isCollapsed && (
         <div className="p-3 bg-amber-50/90 border-b border-amber-200 animate-fade-in space-y-2">
           <div className="flex items-center justify-between text-xs pb-1 border-b border-amber-200/80">
@@ -378,10 +384,6 @@ export const StaveBlockComponent: React.FC<Props> = ({
                 ))}
               </select>
             </div>
-
-            <span className="text-[11px] text-amber-800 font-medium italic">
-              ✨ Los compases se crean automáticamente al llenar la métrica
-            </span>
           </div>
 
           <EditorKeyboard
@@ -399,7 +401,7 @@ export const StaveBlockComponent: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Desplegable 2: Configuración de Clave y Rango de Compases */}
+      {/* Desplegable 2: Configuración de Compases a Mostrar / Previsualización */}
       {activeDropdown === 'settings' && !staveBlock.isCollapsed && (
         <div className="p-4 bg-amber-50/90 border-b border-amber-200 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs animate-fade-in">
           <div>
@@ -442,7 +444,7 @@ export const StaveBlockComponent: React.FC<Props> = ({
           </div>
 
           <div>
-            <label className="block text-slate-800 mb-1 font-bold">Selección de Compases</label>
+            <label className="block text-slate-800 mb-1 font-bold">Compases a Previsualizar en la Hoja</label>
             <select
               value={staveBlock.displayRange.mode}
               onChange={(e) => onUpdate({ 
@@ -457,8 +459,42 @@ export const StaveBlockComponent: React.FC<Props> = ({
               className="w-full bg-white border border-amber-300 rounded-xl p-2 text-slate-900 font-bold focus:outline-none focus:border-amber-500 shadow-sm"
             >
               <option value="all">Ver todos los compases ({staveBlock.measures.length})</option>
-              <option value="custom">Personalizar rango de compases</option>
+              <option value="custom">Personalizar compases</option>
             </select>
+
+            {staveBlock.displayRange.mode === 'custom' && (
+              <div className="flex items-center gap-2 mt-2">
+                <input
+                  type="number"
+                  min={1}
+                  max={staveBlock.measures.length}
+                  value={staveBlock.displayRange.startMeasure || 1}
+                  onChange={(e) => onUpdate({
+                    ...staveBlock,
+                    displayRange: {
+                      ...staveBlock.displayRange,
+                      startMeasure: parseInt(e.target.value, 10) || 1
+                    }
+                  })}
+                  className="w-16 bg-white border border-amber-300 rounded-lg p-1 text-center font-bold text-slate-900"
+                />
+                <span className="text-slate-600 font-bold">a</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={staveBlock.measures.length}
+                  value={staveBlock.displayRange.endMeasure || staveBlock.measures.length}
+                  onChange={(e) => onUpdate({
+                    ...staveBlock,
+                    displayRange: {
+                      ...staveBlock.displayRange,
+                      endMeasure: parseInt(e.target.value, 10) || staveBlock.measures.length
+                    }
+                  })}
+                  className="w-16 bg-white border border-amber-300 rounded-lg p-1 text-center font-bold text-slate-900"
+                />
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -511,11 +547,11 @@ export const StaveBlockComponent: React.FC<Props> = ({
         <div 
           onClick={handleStaveCanvasClick}
           className="p-4 bg-[#fdfbf7] overflow-x-auto min-h-[170px] flex flex-col items-center justify-center cursor-pointer relative group"
-          title="Haz clic sobre el pentagrama para agregar notas directamente"
+          title="Toca sobre el pentagrama para abrir el menú y editar notas"
         >
           <div className="absolute top-2 right-3 text-[10px] text-amber-800/60 font-semibold flex items-center gap-1 pointer-events-none">
             <MousePointerClick size={12} />
-            <span>Clic directo en pentagrama para colocar nota</span>
+            <span>Toca el pentagrama para editar notas</span>
           </div>
 
           <div ref={containerRef} className="w-full flex justify-center" />
