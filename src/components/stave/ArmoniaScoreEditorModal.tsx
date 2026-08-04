@@ -8,7 +8,7 @@ import { CLEF_NAMES, TIME_SIGNATURES, KEY_SIGNATURES } from '../../types/music';
 import { ScoreData, convertJsonToMusicXML } from '../../services/musicxml';
 import { editorOsmdHtml } from '../../services/webviewTemplates';
 import { EditorKeyboard } from './EditorKeyboard';
-import { overwriteDuration, appendNote } from '../../services/rhythmEngine';
+import { getMeasureCapacityIn16ths } from '../../services/rhythmEngine';
 
 interface Props {
   isOpen: boolean;
@@ -37,7 +37,7 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
   const [selectedAccidental, setSelectedAccidental] = useState<PitchAccidental>('');
   const [selectedOctave, setSelectedOctave] = useState<number>(4);
 
-  // Posición del cursor del ratón en PC para mostrar el ícono de la nota seleccionada
+  // Posición del cursor del ratón en PC
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
 
   const [exportMode, setExportMode] = useState<'all' | 'custom'>('all');
@@ -155,7 +155,7 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
         const msg = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
         if (msg.type === 'PENCIL_COMMIT' && msg.data?.step && msg.data?.octave !== undefined) {
           const pitchStr = `${msg.data.step.toLowerCase()}/${msg.data.octave}`;
-          handleAddNoteToExistingMeasures(pitchStr, msg.data.globalIdx);
+          handleAddNoteToExistingMeasures(pitchStr);
         }
       } catch (e) {}
     };
@@ -185,29 +185,54 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
     return dotted ? base * 1.5 : base;
   };
 
-  // Reemplazar notas/silencios en los compases existentes sin crear compases extra
-  const handleAddNoteToExistingMeasures = (pitch: string, targetGlobalIdx?: number) => {
-    const score = buildScoreData(currentBlock);
+  // Inserción limpia de notas dentro de los compases preparados
+  const handleAddNoteToExistingMeasures = (pitch: string) => {
+    const measures = [...currentBlock.measures];
+    if (measures.length === 0) return;
+
+    let targetIdx = measures.length - 1;
+    const capacity16ths = getMeasureCapacityIn16ths(currentBlock.timeSignature || '4/4');
+    let measure = { ...measures[targetIdx] };
+
+    const currentDurationInMeasure = measure.notes.reduce((acc, n) => {
+      let d = 4;
+      if (typeof n.duration === 'string') d = durationTo16ths(n.duration as any, n.isDotted);
+      else if (typeof n.duration === 'number') d = n.duration;
+      return acc + d;
+    }, 0);
+
     const note16ths = durationTo16ths(selectedDuration, isDotted);
-    const targetPitch = pitch === 'R' ? 'R' : pitch.replace('/', '').toUpperCase();
+    const isRest = pitch === 'R';
 
-    const { scoreData: updatedScore } = (targetGlobalIdx !== undefined && targetGlobalIdx >= 0)
-      ? overwriteDuration(score, 0, targetGlobalIdx, targetPitch, note16ths)
-      : appendNote(score, 0, targetPitch, note16ths);
+    const newNote = {
+      id: `n-${Date.now()}`,
+      keys: isRest ? ['b/4'] : [pitch],
+      duration: selectedDuration,
+      isRest: isRest,
+      isDotted: isDotted,
+      accidental: isRest ? undefined : (selectedAccidental || undefined)
+    };
 
-    const updatedMeasures: MeasureData[] = updatedScore.parts[0].measures.map(m => ({
-      id: `m-${Date.now()}-${m.number}`,
-      measureNumber: m.number,
-      notes: m.notes.map(n => ({
-        id: n.id,
-        keys: n.pitch === 'R' ? ['b/4'] : [`${n.pitch.slice(0, -1).toLowerCase()}/${n.pitch.slice(-1)}`],
-        duration: n.duration === 16 ? 'w' : n.duration === 8 ? 'h' : n.duration === 4 ? 'q' : n.duration === 2 ? '8' : '16',
-        isRest: n.type === 'rest',
-        isDotted: n.dotted
-      }))
-    }));
+    if (currentDurationInMeasure + note16ths > capacity16ths) {
+      // Si el compás actual ya se llenó, busca el siguiente compás vacío o inserta uno
+      const emptyIdx = measures.findIndex(m => m.notes.length === 0);
+      if (emptyIdx !== -1) {
+        measures[emptyIdx] = { ...measures[emptyIdx], notes: [newNote] };
+      } else {
+        const newMeasureNum = measures.length + 1;
+        measures.push({
+          id: `m-${Date.now()}-${newMeasureNum}`,
+          measureNumber: newMeasureNum,
+          notes: [newNote],
+          harmonicAnalysis: { measureNumber: newMeasureNum }
+        });
+      }
+    } else {
+      measure.notes = [...measure.notes, newNote];
+      measures[targetIdx] = measure;
+    }
 
-    setCurrentBlock({ ...currentBlock, measures: updatedMeasures, updatedAt: Date.now() });
+    setCurrentBlock({ ...currentBlock, measures, updatedAt: Date.now() });
   };
 
   // Eliminar última nota
@@ -410,7 +435,7 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
                   ref={iframeRef}
                   srcDoc={editorOsmdHtml}
                   onLoad={sendXmlToIframe}
-                  title="ArmonIA OSMD Engine with In-Place Measure Overwriting"
+                  title="ArmonIA OSMD Engine"
                   className="w-full h-full min-h-[260px] border-none"
                   sandbox="allow-scripts allow-same-origin"
                 />
