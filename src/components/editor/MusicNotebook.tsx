@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { 
   Plus, Trash2, ChevronUp, ChevronDown, Music, Type, 
-  Tag, Star, Camera, Heading, Palette
+  Tag, Star, Camera, Heading, Palette, Edit3
 } from 'lucide-react';
 import type { NotePage, ContentBlock, StaveBlock, TextBlock, ImageBlock, HeadingBlock } from '../../types/music';
 import { StaveBlockComponent } from '../stave/StaveBlockComponent';
+import { ArmoniaScoreEditorModal } from '../stave/ArmoniaScoreEditorModal';
 
 interface Props {
   page: NotePage;
@@ -14,6 +15,8 @@ interface Props {
 
 export const MusicNotebook: React.FC<Props> = ({ page, onUpdatePage, onDeletePage }) => {
   const [tagInput, setTagInput] = useState('');
+  const [editingStaveBlock, setEditingStaveBlock] = useState<StaveBlock | null>(null);
+  const [isStaveModalOpen, setIsStaveModalOpen] = useState<boolean>(false);
 
   // Reordenar bloques (Subir / Bajar)
   const moveBlock = (index: number, direction: 'up' | 'down') => {
@@ -41,6 +44,55 @@ export const MusicNotebook: React.FC<Props> = ({ page, onUpdatePage, onDeletePag
     if (window.confirm(`¿Seguro que deseas eliminar la hoja "${page.title}"?`)) {
       onDeletePage();
     }
+  };
+
+  // Abrir Modal Editor de ArmonIA-App
+  const handleOpenStaveModal = (existingStave?: StaveBlock) => {
+    if (existingStave) {
+      setEditingStaveBlock(existingStave);
+    } else {
+      const newStave: StaveBlock = {
+        id: `stave-${Date.now()}`,
+        title: 'Ejercicio de Armonía',
+        isCollapsed: false,
+        clef: 'treble',
+        keySignature: 'C',
+        timeSignature: '4/4',
+        displayRange: { mode: 'all' },
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        measures: [
+          {
+            id: `m-${Date.now()}-1`,
+            measureNumber: 1,
+            notes: [
+              { id: `n-1`, keys: ['c/4'], duration: 'q', isRest: false },
+              { id: `n-2`, keys: ['e/4'], duration: 'q', isRest: false },
+              { id: `n-3`, keys: ['g/4'], duration: 'q', isRest: false },
+              { id: `n-4`, keys: ['c/5'], duration: 'q', isRest: false }
+            ],
+            harmonicAnalysis: { measureNumber: 1, romanNumeral: 'I' }
+          }
+        ]
+      };
+      setEditingStaveBlock(newStave);
+    }
+    setIsStaveModalOpen(true);
+  };
+
+  // Guardar Pentagrama desde Modal ArmonIA
+  const handleSaveStaveFromModal = (finalStave: StaveBlock) => {
+    const existingIndex = page.blocks.findIndex(b => b.id === finalStave.id);
+    let updatedBlocks: ContentBlock[];
+
+    if (existingIndex !== -1) {
+      updatedBlocks = [...page.blocks];
+      updatedBlocks[existingIndex] = { id: finalStave.id, type: 'stave', data: finalStave };
+    } else {
+      updatedBlocks = [...page.blocks, { id: finalStave.id, type: 'stave', data: finalStave }];
+    }
+
+    onUpdatePage({ ...page, blocks: updatedBlocks, updatedAt: Date.now() });
   };
 
   // Añadir Título
@@ -87,40 +139,6 @@ export const MusicNotebook: React.FC<Props> = ({ page, onUpdatePage, onDeletePag
     reader.readAsDataURL(file);
   };
 
-  // Añadir Pentagrama directo en la hoja
-  const addStaveBlock = () => {
-    const newStave: StaveBlock = {
-      id: `stave-${Date.now()}`,
-      title: 'Ejercicio de Armonía',
-      isCollapsed: false,
-      clef: 'treble',
-      keySignature: 'C',
-      timeSignature: '4/4',
-      displayRange: { mode: 'all' },
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      measures: [
-        {
-          id: `m-${Date.now()}-1`,
-          measureNumber: 1,
-          notes: [
-            { id: `n-1`, keys: ['c/4'], duration: 'q', isRest: false },
-            { id: `n-2`, keys: ['e/4'], duration: 'q', isRest: false },
-            { id: `n-3`, keys: ['g/4'], duration: 'q', isRest: false },
-            { id: `n-4`, keys: ['c/5'], duration: 'q', isRest: false }
-          ],
-          harmonicAnalysis: { measureNumber: 1, romanNumeral: 'I' }
-        }
-      ]
-    };
-
-    onUpdatePage({
-      ...page,
-      blocks: [...page.blocks, { id: newStave.id, type: 'stave', data: newStave }],
-      updatedAt: Date.now()
-    });
-  };
-
   // Añadir Tag
   const handleAddTag = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && tagInput.trim()) {
@@ -146,6 +164,16 @@ export const MusicNotebook: React.FC<Props> = ({ page, onUpdatePage, onDeletePag
 
   return (
     <div className="max-w-4xl mx-auto my-3 sm:my-6">
+      {/* Modal Editor ArmonIA App */}
+      {editingStaveBlock && (
+        <ArmoniaScoreEditorModal
+          isOpen={isStaveModalOpen}
+          initialBlock={editingStaveBlock}
+          onClose={() => setIsStaveModalOpen(false)}
+          onSave={handleSaveStaveFromModal}
+        />
+      )}
+
       {/* Cuaderno Estilo Libreta Académica */}
       <div className="bg-[#fdfbf7] border border-amber-200/90 rounded-3xl shadow-xl shadow-amber-950/5 overflow-hidden relative transition-all">
         <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-rose-300/60 pointer-events-none hidden sm:block" />
@@ -175,7 +203,7 @@ export const MusicNotebook: React.FC<Props> = ({ page, onUpdatePage, onDeletePag
             </button>
           </div>
 
-          {/* Título de la Hoja (Limpia placeholder al hacer foco) */}
+          {/* Título de la Hoja */}
           <input
             type="text"
             value={page.title}
@@ -319,14 +347,24 @@ export const MusicNotebook: React.FC<Props> = ({ page, onUpdatePage, onDeletePag
               )}
 
               {block.type === 'stave' && (
-                <StaveBlockComponent
-                  staveBlock={block.data}
-                  onUpdate={(updatedStave) => {
-                    const newBlocks = [...page.blocks];
-                    newBlocks[idx] = { id: block.id, type: 'stave', data: updatedStave };
-                    onUpdatePage({ ...page, blocks: newBlocks, updatedAt: Date.now() });
-                  }}
-                />
+                <div className="relative group/stave">
+                  <button
+                    onClick={() => handleOpenStaveModal(block.data)}
+                    className="absolute top-3 right-16 z-20 px-3 py-1 bg-amber-600 hover:bg-amber-500 text-white font-extrabold text-xs rounded-xl shadow-md transition-colors flex items-center gap-1"
+                  >
+                    <Edit3 size={13} />
+                    <span>Abrir Editor ArmonIA</span>
+                  </button>
+
+                  <StaveBlockComponent
+                    staveBlock={block.data}
+                    onUpdate={(updatedStave) => {
+                      const newBlocks = [...page.blocks];
+                      newBlocks[idx] = { id: block.id, type: 'stave', data: updatedStave };
+                      onUpdatePage({ ...page, blocks: newBlocks, updatedAt: Date.now() });
+                    }}
+                  />
+                </div>
               )}
             </div>
           ))}
@@ -335,11 +373,11 @@ export const MusicNotebook: React.FC<Props> = ({ page, onUpdatePage, onDeletePag
         {/* Botones Flotantes Inferiores para Añadir Bloques */}
         <div className="p-4 bg-[#f8f5ee] border-t border-amber-200/80 flex flex-wrap items-center justify-center gap-2">
           <button
-            onClick={addStaveBlock}
+            onClick={() => handleOpenStaveModal()}
             className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-amber-600 hover:bg-amber-500 text-white font-extrabold text-xs shadow-lg shadow-amber-600/25 transition-all"
           >
             <Music size={16} />
-            <span>+ Pentagrama Interactivo</span>
+            <span>+ Pentagrama Interactivo (Editor ArmonIA)</span>
           </button>
 
           <button
