@@ -203,7 +203,6 @@ export const editorOsmdHtml = `<!DOCTYPE html>
       window.isProcessingNote = false;
       window.editMode = 'pencil';
       window.isLoadingScore = false;
-      window.currentClefType = 'treble';
 
       function send(type, data) {
         var payload = JSON.stringify({ type: type, data: data });
@@ -301,17 +300,12 @@ export const editorOsmdHtml = `<!DOCTYPE html>
         } catch (e) { return null; }
       }
 
-      // Desplazamiento ajustado hacia arriba (-0.25) para calibración exacta de altura del puntero
+      // IMPLEMENTACIÓN 100% IDÉNTICA A ARMONIA-APP
       function pitchFromUnitY(partIndex, unitY) {
         const topLineUnitY = getStaffTopLineUnitY(partIndex, unitY);
         if (topLineUnitY === null) return null;
-        
-        const topRef = (window.currentClefType === 'bass' || partIndex === 1)
-          ? { step: 'A', octave: 3 }
-          : { step: 'F', octave: 5 };
-
-        const calibratedUnitY = unitY - 0.25;
-        const stepsFromTop = Math.round((topLineUnitY - calibratedUnitY) / 0.5);
+        const topRef = partIndex === 0 ? { step: 'F', octave: 5 } : { step: 'A', octave: 3 };
+        const stepsFromTop = Math.round((topLineUnitY - unitY) / 0.5);
         const letterIdx = DIATONIC_STEPS.indexOf(topRef.step);
         const totalIdx = letterIdx + stepsFromTop;
         const octave = topRef.octave + Math.floor(totalIdx / 7);
@@ -657,10 +651,6 @@ export const editorOsmdHtml = `<!DOCTYPE html>
             var finalContent;
             if (data.trim().startsWith('<?xml')) { finalContent = data; }
             else { finalContent = decodeURIComponent(escape(atob(data))); }
-
-            if (msg.clef) {
-              window.currentClefType = msg.clef;
-            }
 
             if (osmd) {
               osmd.load(finalContent).then(function() {
