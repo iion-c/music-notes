@@ -1,27 +1,24 @@
 export type PitchAccidental = '#' | 'b' | 'n' | '';
 export type ClefType = 'treble' | 'bass' | 'alto' | 'tenor';
-export type DurationType = 'w' | 'h' | 'q' | '8' | '16' | '32'; // whole, half, quarter, 8th, 16th, 32nd
-export type DynamicMark = 'p' | 'mp' | 'mf' | 'f' | 'ff';
+export type DurationType = 'w' | 'h' | 'q' | '8' | '16' | '32';
 
 export interface MusicNoteItem {
   id: string;
-  keys: string[]; // e.g. ["c/4"], ["e/4", "g/4", "b/4"] for chords
+  keys: string[];
   duration: DurationType;
   isRest: boolean;
   isDotted?: boolean;
   accidental?: PitchAccidental;
-  dynamic?: DynamicMark;
-  tieStart?: boolean;
-  tieStop?: boolean;
-  annotation?: string; // e.g. "Paso", "Bordadura", "Síncopa"
+  dynamic?: string;
+  annotation?: string;
 }
 
 export interface MeasureHarmonicAnalysis {
   measureNumber: number;
-  romanNumeral?: string; // e.g. "I", "IV", "V7", "ii6", "vi", "Cadencia Auténtica"
-  figuredBass?: string;  // e.g. "6", "6/4", "7", "6/5"
-  chordName?: string;    // e.g. "Cmaj7", "G7", "Am"
-  comments?: string;     // Text notes for this measure
+  romanNumeral?: string;
+  figuredBass?: string;
+  chordName?: string;
+  comments?: string;
 }
 
 export interface MeasureData {
@@ -29,8 +26,8 @@ export interface MeasureData {
   measureNumber: number;
   notes: MusicNoteItem[];
   clef?: ClefType;
-  keySignature?: string; // e.g. "C", "G", "D", "F", "Bb", "Am", "Em"
-  timeSignature?: string; // e.g. "4/4", "3/4", "6/8", "2/4", "4/2"
+  keySignature?: string;
+  timeSignature?: string;
   harmonicAnalysis?: MeasureHarmonicAnalysis;
 }
 
@@ -40,13 +37,13 @@ export interface StaveBlock {
   description?: string;
   isCollapsed: boolean;
   clef: ClefType;
-  keySignature: string; // "C", "G", "D", "A", "E", "F", "Bb", "Eb"
-  timeSignature: string; // "4/4", "3/4", "6/8", "2/4", "4/2"
+  keySignature: string;
+  timeSignature: string;
   measures: MeasureData[];
   displayRange: {
     mode: 'all' | 'custom';
-    startMeasure?: number; // 1-indexed
-    endMeasure?: number;   // 1-indexed
+    startMeasure?: number;
+    endMeasure?: number;
   };
   exerciseType?: 'harmony' | 'counterpoint' | 'dictation' | 'free';
   tags?: string[];
@@ -54,10 +51,19 @@ export interface StaveBlock {
   updatedAt: number;
 }
 
+export interface HeadingBlock {
+  id: string;
+  type: 'heading';
+  text: string;
+  level: 'h1' | 'h2' | 'h3';
+  color?: string; // e.g. '#92400e', '#0369a1', '#15803d'
+}
+
 export interface TextBlock {
   id: string;
   type: 'text';
-  content: string; // HTML/Markdown formatted theory note text
+  content: string;
+  styleVariant?: 'normal' | 'callout-yellow' | 'callout-blue' | 'callout-green';
 }
 
 export interface ImageBlock {
@@ -65,11 +71,14 @@ export interface ImageBlock {
   type: 'image';
   src: string;
   caption: string;
+  alignment?: 'left' | 'center' | 'right' | 'full';
+  widthPx?: number;
   timestamp: number;
 }
 
 export type ContentBlock = 
   | { id: string; type: 'stave'; data: StaveBlock }
+  | HeadingBlock
   | TextBlock
   | ImageBlock;
 

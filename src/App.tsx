@@ -9,7 +9,7 @@ import { DesktopLayout } from './components/desktop/DesktopLayout';
 import { MobileLayout } from './components/mobile/MobileLayout';
 import { WelcomeTutorialModal } from './components/onboarding/WelcomeTutorialModal';
 import { AuthModal } from './components/auth/AuthModal';
-import { Monitor, Smartphone, HelpCircle, User as UserIcon } from 'lucide-react';
+import { HelpCircle, User as UserIcon } from 'lucide-react';
 import type { User } from 'firebase/auth';
 
 export function App() {
@@ -24,9 +24,8 @@ export function App() {
   // Tutorial animado
   const [showTutorial, setShowTutorial] = useState<boolean>(() => !hasSeenTutorial());
 
-  // Detección de dispositivo (Móvil vs Escritorio)
+  // Detección automática de dispositivo (Móvil/Android vs Escritorio)
   const [isMobile, setIsMobile] = useState<boolean>(() => window.innerWidth < 768);
-  const [forceViewMode, setForceViewMode] = useState<'auto' | 'mobile' | 'desktop'>('auto');
 
   useEffect(() => {
     const handleResize = () => {
@@ -109,7 +108,7 @@ export function App() {
         {
           id: `tb-${Date.now()}`,
           type: 'text',
-          content: '<p>Empieza a escribir tus observaciones musicales o añade un pentagrama...</p>'
+          content: 'Empieza a escribir tus observaciones musicales o añade un pentagrama...'
         }
       ]
     };
@@ -204,54 +203,8 @@ export function App() {
     reader.readAsText(file);
   };
 
-  const activeMode = forceViewMode === 'auto' ? (isMobile ? 'mobile' : 'desktop') : forceViewMode;
-
   return (
-    <div className="relative w-screen h-screen overflow-hidden">
-      {/* Barra de estado superior: Firebase Sync Status & Testing view switcher */}
-      <div className="fixed top-2 right-3 z-40 flex items-center gap-1.5 bg-[#fdfbf7] border border-amber-200 p-1 rounded-full shadow-lg text-[11px]">
-        <button
-          onClick={() => setShowAuthModal(true)}
-          className="px-2 py-0.5 rounded-full flex items-center gap-1 font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-200 text-[10px] transition-colors"
-          title="Iniciar Sesión / Administrar Cuenta"
-        >
-          <UserIcon size={12} className="text-amber-700" />
-          <span className="max-w-[100px] truncate">
-            {currentUser ? (currentUser.email || 'Usuario') : 'Crear Cuenta'}
-          </span>
-        </button>
-
-        <button
-          onClick={() => setForceViewMode('desktop')}
-          className={`px-2 py-1 rounded-full flex items-center gap-1 font-bold transition-colors ${
-            activeMode === 'desktop' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-          }`}
-          title="Vista Web Desktop"
-        >
-          <Monitor size={12} />
-          <span className="hidden sm:inline">Web</span>
-        </button>
-
-        <button
-          onClick={() => setForceViewMode('mobile')}
-          className={`px-2 py-1 rounded-full flex items-center gap-1 font-bold transition-colors ${
-            activeMode === 'mobile' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-          }`}
-          title="Vista Mobile Dedicated"
-        >
-          <Smartphone size={12} />
-          <span className="hidden sm:inline">Móvil</span>
-        </button>
-
-        <button
-          onClick={() => setShowTutorial(true)}
-          className="px-2 py-1 rounded-full text-amber-900 font-bold hover:bg-amber-100 transition-colors"
-          title="Ver Guía / Tutorial"
-        >
-          <HelpCircle size={13} />
-        </button>
-      </div>
-
+    <div className="relative w-screen h-screen overflow-hidden bg-[#f7f4eb]">
       {/* Modal de Autenticación */}
       <AuthModal
         isOpen={showAuthModal}
@@ -265,7 +218,7 @@ export function App() {
         onClose={handleCloseTutorial}
       />
 
-      {activeMode === 'mobile' ? (
+      {isMobile ? (
         <MobileLayout
           notebooks={notebooks}
           pages={pages}
@@ -273,6 +226,7 @@ export function App() {
           currentUser={currentUser}
           onSelectPage={(id) => setActivePageId(id)}
           onCreatePage={handleCreatePage}
+          onCreateNotebook={handleCreateNotebook}
           onUpdatePage={handleUpdatePage}
           onDeletePage={handleDeletePage}
           onOpenTutorial={() => setShowTutorial(true)}
