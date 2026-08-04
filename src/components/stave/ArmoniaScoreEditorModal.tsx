@@ -185,22 +185,12 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
     return dotted ? base * 1.5 : base;
   };
 
-  // Inserción limpia de notas dentro de los compases preparados
+  // Inserción secuencial ordenada de compases (Compás 1 -> Compás 2 -> Compás 3 -> Compás 4)
   const handleAddNoteToExistingMeasures = (pitch: string) => {
     const measures = [...currentBlock.measures];
     if (measures.length === 0) return;
 
-    let targetIdx = measures.length - 1;
     const capacity16ths = getMeasureCapacityIn16ths(currentBlock.timeSignature || '4/4');
-    let measure = { ...measures[targetIdx] };
-
-    const currentDurationInMeasure = measure.notes.reduce((acc, n) => {
-      let d = 4;
-      if (typeof n.duration === 'string') d = durationTo16ths(n.duration as any, n.isDotted);
-      else if (typeof n.duration === 'number') d = n.duration;
-      return acc + d;
-    }, 0);
-
     const note16ths = durationTo16ths(selectedDuration, isDotted);
     const isRest = pitch === 'R';
 
@@ -213,12 +203,31 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
       accidental: isRest ? undefined : (selectedAccidental || undefined)
     };
 
-    if (currentDurationInMeasure + note16ths > capacity16ths) {
-      // Si el compás actual ya se llenó, busca el siguiente compás vacío o inserta uno
-      const emptyIdx = measures.findIndex(m => m.notes.length === 0);
-      if (emptyIdx !== -1) {
-        measures[emptyIdx] = { ...measures[emptyIdx], notes: [newNote] };
+    // 1. Buscar el PRIMER compás desde el inicio (Compás 1) que tenga espacio suficiente
+    let targetIdx = measures.findIndex(m => {
+      const totalInMeasure = m.notes.reduce((acc, n) => acc + durationTo16ths(n.duration as any, n.isDotted), 0);
+      return totalInMeasure + note16ths <= capacity16ths;
+    });
+
+    if (targetIdx !== -1) {
+      measures[targetIdx] = {
+        ...measures[targetIdx],
+        notes: [...measures[targetIdx].notes, newNote]
+      };
+    } else {
+      // 2. Si ningún compás tiene espacio suficiente pero alguno está incompleto
+      const incompleteIdx = measures.findIndex(m => {
+        const totalInMeasure = m.notes.reduce((acc, n) => acc + durationTo16ths(n.duration as any, n.isDotted), 0);
+        return totalInMeasure < capacity16ths;
+      });
+
+      if (incompleteIdx !== -1) {
+        measures[incompleteIdx] = {
+          ...measures[incompleteIdx],
+          notes: [...measures[incompleteIdx].notes, newNote]
+        };
       } else {
+        // 3. Si absolutamente TODOS los compases están 100% llenos, crear uno nuevo
         const newMeasureNum = measures.length + 1;
         measures.push({
           id: `m-${Date.now()}-${newMeasureNum}`,
@@ -227,9 +236,6 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
           harmonicAnalysis: { measureNumber: newMeasureNum }
         });
       }
-    } else {
-      measure.notes = [...measure.notes, newNote];
-      measures[targetIdx] = measure;
     }
 
     setCurrentBlock({ ...currentBlock, measures, updatedAt: Date.now() });
@@ -239,11 +245,14 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
   const handleRemoveLastNote = () => {
     const measures = [...currentBlock.measures];
     if (measures.length === 0) return;
-    const targetIdx = measures.length - 1;
-    const measure = { ...measures[targetIdx] };
-    if (measure.notes.length > 0) {
+
+    // Buscar el último compás que contenga notas
+    const lastFilledIdx = [...measures].reverse().findIndex(m => m.notes.length > 0);
+    if (lastFilledIdx !== -1) {
+      const actualIdx = measures.length - 1 - lastFilledIdx;
+      const measure = { ...measures[actualIdx] };
       measure.notes = measure.notes.slice(0, -1);
-      measures[targetIdx] = measure;
+      measures[actualIdx] = measure;
       setCurrentBlock({ ...currentBlock, measures, updatedAt: Date.now() });
     }
   };

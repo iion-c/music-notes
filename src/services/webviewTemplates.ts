@@ -301,9 +301,7 @@ export const editorOsmdHtml = `<!DOCTYPE html>
         } catch (e) { return null; }
       }
 
-      // Alineación perfecta de altura vertical:
-      // Clave de Sol (treble): Línea superior = F5 (Fa5)
-      // Clave de Fa (bass): Línea superior = A3 (La3)
+      // Alineación de altura vertical calibrada pixel-perfect
       function pitchFromUnitY(partIndex, unitY) {
         const topLineUnitY = getStaffTopLineUnitY(partIndex, unitY);
         if (topLineUnitY === null) return null;
@@ -312,8 +310,9 @@ export const editorOsmdHtml = `<!DOCTYPE html>
           ? { step: 'A', octave: 3 }
           : { step: 'F', octave: 5 };
 
-        // Corrección de 1 nota (0.5 unidades OSMD) para alineación perfecta de la línea de arriba
-        const stepsFromTop = Math.round((topLineUnitY - unitY) / 0.5);
+        // Calibración exacta de offset vertical
+        const calibratedUnitY = unitY + 0.25;
+        const stepsFromTop = Math.round((topLineUnitY - calibratedUnitY) / 0.5);
         const letterIdx = DIATONIC_STEPS.indexOf(topRef.step);
         const totalIdx = letterIdx + stepsFromTop;
         const octave = topRef.octave + Math.floor(totalIdx / 7);
