@@ -121,14 +121,14 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
     if (step === 'workspace') sendXmlToIframe();
   }, [currentBlock, step]);
 
-  // Escuchar toque en la cruceta de Lápiz
+  // Escuchar PENCIL_COMMIT oficial de ArmonIA-App
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       try {
         const msg = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-        if (msg.type === 'PENCIL_COMMIT' && msg.data?.pitch) {
-          const formattedPitch = `${msg.data.pitch.slice(0,-1).toLowerCase()}/${msg.data.pitch.slice(-1)}`;
-          handleAddNoteFromKeyboard(formattedPitch);
+        if (msg.type === 'PENCIL_COMMIT' && msg.data?.step && msg.data?.octave !== undefined) {
+          const pitchStr = `${msg.data.step.toLowerCase()}/${msg.data.octave}`;
+          handleAddNoteFromKeyboard(pitchStr);
         }
       } catch (e) {}
     };
@@ -158,7 +158,7 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
     return dotted ? base * 1.5 : base;
   };
 
-  // Inserción de notas desde Teclado ArmonIA o toque de cruceta
+  // Inserción de notas desde Teclado ArmonIA o motor táctil de Lápiz
   const handleAddNoteFromKeyboard = (pitch: string) => {
     const measures = [...currentBlock.measures];
     let targetIdx = measures.length - 1;
@@ -260,7 +260,7 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
             </div>
             <div>
               <h3 className="font-extrabold text-sm text-white leading-tight">Editor ArmonIA App</h3>
-              <p className="text-[10px] text-amber-400 font-bold">Lápiz con Cruceta & Elección de Compases</p>
+              <p className="text-[10px] text-amber-400 font-bold">Motor de Lápiz Táctil Nativo</p>
             </div>
           </div>
 
@@ -343,7 +343,7 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
                       editMode === 'pencil' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-700'
                     }`}
                   >
-                    ✏️ Lápiz (Cruceta)
+                    ✏️ Lápiz (Táctil)
                   </button>
                   <button
                     onClick={() => handleToggleEditMode('select')}
@@ -386,13 +386,13 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
                 </div>
               </div>
 
-              {/* Pantalla del Pentagrama (Con iframe OSMD + Cruceta Completa) */}
+              {/* Pantalla del Pentagrama (Con iframe OSMD oficial de ArmonIA-App) */}
               <div className="flex-1 min-h-[260px] bg-white rounded-2xl border border-amber-200/90 shadow-inner overflow-hidden relative">
                 <iframe
                   ref={iframeRef}
                   srcDoc={editorOsmdHtml}
                   onLoad={sendXmlToIframe}
-                  title="ArmonIA OSMD Engine with Full Crosshair"
+                  title="ArmonIA OSMD Engine with Native Pencil"
                   className="w-full h-full min-h-[260px] border-none"
                   sandbox="allow-scripts allow-same-origin"
                 />
