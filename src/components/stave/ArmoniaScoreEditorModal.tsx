@@ -111,7 +111,7 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
     if (iframeRef.current && iframeRef.current.contentWindow) {
       const xmlString = convertJsonToMusicXML(buildScoreData(currentBlock));
       iframeRef.current.contentWindow.postMessage(
-        JSON.stringify({ type: 'LOAD_FILE', data: xmlString }),
+        JSON.stringify({ type: 'LOAD_FILE', data: xmlString, clef: currentBlock.clef }),
         '*'
       );
     }
@@ -260,7 +260,7 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
             </div>
             <div>
               <h3 className="font-extrabold text-sm text-white leading-tight">Editor ArmonIA App</h3>
-              <p className="text-[10px] text-amber-400 font-bold">Motor de Lápiz Táctil Nativo</p>
+              <p className="text-[10px] text-amber-400 font-bold">Alineación Nativa de Clave & Notas</p>
             </div>
           </div>
 
@@ -392,7 +392,7 @@ export const ArmoniaScoreEditorModal: React.FC<Props> = ({
                   ref={iframeRef}
                   srcDoc={editorOsmdHtml}
                   onLoad={sendXmlToIframe}
-                  title="ArmonIA OSMD Engine with Native Pencil"
+                  title="ArmonIA OSMD Engine with Exact Clef Alignment"
                   className="w-full h-full min-h-[260px] border-none"
                   sandbox="allow-scripts allow-same-origin"
                 />

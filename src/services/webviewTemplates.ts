@@ -203,6 +203,7 @@ export const editorOsmdHtml = `<!DOCTYPE html>
       window.isProcessingNote = false;
       window.editMode = 'pencil';
       window.isLoadingScore = false;
+      window.currentClefType = 'treble';
 
       function send(type, data) {
         var payload = JSON.stringify({ type: type, data: data });
@@ -225,7 +226,7 @@ export const editorOsmdHtml = `<!DOCTYPE html>
 
       function highlightNote(targetLocalIdx, targetPartIdx) {
         if (!osmd || !osmd.GraphicSheet) return;
-        const pIdxToHighlight = (targetPartIdx !== undefined) ? targetPartIdx : (window.activePartIndexFromRN || 0);
+        const pIdxToHighlight = (targetPartIdx !== undefined) ? targetPartIdx : 0;
         let attempts = 0;
         const maxAttempts = 20;
 
@@ -300,10 +301,17 @@ export const editorOsmdHtml = `<!DOCTYPE html>
         } catch (e) { return null; }
       }
 
+      // Referencia exacta según clave musical:
+      // Clave de Sol (treble): Línea superior = F5 (Fa5)
+      // Clave de Fa (bass): Línea superior = A3 (La3)
       function pitchFromUnitY(partIndex, unitY) {
         const topLineUnitY = getStaffTopLineUnitY(partIndex, unitY);
         if (topLineUnitY === null) return null;
-        const topRef = partIndex === 0 ? { step: 'F', octave: 5 } : { step: 'A', octave: 3 };
+        
+        const topRef = (window.currentClefType === 'bass' || partIndex === 1)
+          ? { step: 'A', octave: 3 }
+          : { step: 'F', octave: 5 };
+
         const stepsFromTop = Math.round((topLineUnitY - unitY) / 0.5);
         const letterIdx = DIATONIC_STEPS.indexOf(topRef.step);
         const totalIdx = letterIdx + stepsFromTop;
@@ -650,6 +658,10 @@ export const editorOsmdHtml = `<!DOCTYPE html>
             var finalContent;
             if (data.trim().startsWith('<?xml')) { finalContent = data; }
             else { finalContent = decodeURIComponent(escape(atob(data))); }
+
+            if (msg.clef) {
+              window.currentClefType = msg.clef;
+            }
 
             if (osmd) {
               osmd.load(finalContent).then(function() {
