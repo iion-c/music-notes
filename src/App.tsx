@@ -1,255 +1,151 @@
-import React, { useState, useEffect } from 'react';
-import type { Notebook, NotePage } from './types/music';
-import { getStoredNotebooks, saveNotebooks, getStoredPages, savePages, hasSeenTutorial, setTutorialSeen } from './services/storage';
-import { 
-  initAuth, syncCloudNotebooks, syncCloudPages, 
-  saveCloudPage, saveCloudNotebook, deleteCloudPage 
-} from './services/firebase';
-import { DesktopLayout } from './components/desktop/DesktopLayout';
-import { MobileLayout } from './components/mobile/MobileLayout';
+import React, { useEffect, useMemo, useState } from 'react';
+import type { Notebook } from './types/notes';
+import { StoreProvider, useStore } from './store';
+import { UIContext, type UIActions } from './ui';
+import { hasSeenTutorial, setTutorialSeen } from './services/storage';
+import { Sidebar } from './components/shell/Sidebar';
+import { Library } from './components/library/Library';
+import { NotebookView } from './components/library/NotebookView';
+import { PageView } from './components/page/PageView';
+import { TemplatePicker } from './components/modals/TemplatePicker';
+import { NotebookDialog } from './components/modals/NotebookDialog';
+import { SettingsModal } from './components/modals/SettingsModal';
+import { MethodGuide } from './components/modals/MethodGuide';
 import { WelcomeTutorialModal } from './components/onboarding/WelcomeTutorialModal';
 import { AuthModal } from './components/auth/AuthModal';
-import { HelpCircle, User as UserIcon } from 'lucide-react';
-import type { User } from 'firebase/auth';
+import { Toasts } from './components/ui/primitives';
 
-export function App() {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
-
-  // Cuadernos y Páginas Aislamiento por Cuenta
-  const [notebooks, setNotebooks] = useState<Notebook[]>([]);
-  const [pages, setPages] = useState<NotePage[]>([]);
-  const [activePageId, setActivePageId] = useState<string | null>(null);
-
-  // Tutorial animado
-  const [showTutorial, setShowTutorial] = useState<boolean>(() => !hasSeenTutorial());
-
-  // Detección automática de dispositivo (Móvil/Android vs Escritorio)
-  const [isMobile, setIsMobile] = useState<boolean>(() => window.innerWidth < 768);
-
+function useIsDesktop() {
+  const [desktop, setDesktop] = useState(() => window.matchMedia('(min-width: 1024px)').matches);
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const on = () => setDesktop(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
   }, []);
+  return desktop;
+}
 
-  // Inicializar Firebase Auth & Firestore Sync con Aislamiento Estricto por Usuario
+function useTheme(theme: 'system' | 'light' | 'dark') {
   useEffect(() => {
-    let unsubNB: (() => void) | null = null;
-    let unsubPages: (() => void) | null = null;
-
-    const unsubscribeAuth = initAuth((user) => {
-      setCurrentUser(user);
-
-      if (user) {
-        // Limpiar datos del usuario anterior al cambiar de cuenta
-        setNotebooks([]);
-        setPages([]);
-        setActivePageId(null);
-
-        // Suscribirse A SUS PROPIOS cuadernos en Firestore
-        unsubNB = syncCloudNotebooks(user.uid, (cloudNotebooks) => {
-          setNotebooks(cloudNotebooks);
-        });
-
-        // Suscribirse A SUS PROPIAS páginas en Firestore
-        unsubPages = syncCloudPages(user.uid, (cloudPages) => {
-          setPages(cloudPages);
-          if (cloudPages.length > 0 && !activePageId) {
-            setActivePageId(cloudPages[0].id);
-          }
-        });
-      } else {
-        // Cargar almacenamiento local de invitado si no hay sesión
-        const localNBs = getStoredNotebooks();
-        const localPgs = getStoredPages();
-        setNotebooks(localNBs);
-        setPages(localPgs);
-        if (localPgs.length > 0) setActivePageId(localPgs[0].id);
-      }
-    });
-
-    return () => {
-      unsubscribeAuth();
-      if (unsubNB) unsubNB();
-      if (unsubPages) unsubPages();
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const apply = () => {
+      const dark = theme === 'dark' || (theme === 'system' && mq.matches);
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
     };
-  }, []);
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, [theme]);
+}
 
-  // Persistir cuadernos localmente como respaldo
+type ModalState =
+  | { kind: 'template'; notebookId?: string; section?: string }
+  | { kind: 'notebook'; notebook?: Notebook }
+  | { kind: 'settings' }
+  | { kind: 'guide' }
+  | { kind: 'auth' }
+  | { kind: 'welcome' }
+  | null;
+
+function Shell() {
+  const { view, pages, notebooks, settings, user, setView } = useStore();
+  const desktop = useIsDesktop();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [modal, setModal] = useState<ModalState>(() => (hasSeenTutorial() ? null : { kind: 'welcome' }));
+  useTheme(settings.theme);
+
+  const ui: UIActions = useMemo(
+    () => ({
+      openTemplatePicker: (opts) => setModal({ kind: 'template', ...opts }),
+      openNotebookDialog: (notebook) => setModal({ kind: 'notebook', notebook }),
+      openSettings: () => setModal({ kind: 'settings' }),
+      openGuide: () => setModal({ kind: 'guide' }),
+      openAuth: () => setModal({ kind: 'auth' }),
+      openWelcome: () => setModal({ kind: 'welcome' }),
+      closeSidebar: () => setSidebarOpen(false),
+    }),
+    [],
+  );
+
+  // Ctrl+K: buscar
   useEffect(() => {
-    if (!currentUser) saveNotebooks(notebooks);
-  }, [notebooks, currentUser]);
-
-  // Persistir páginas localmente como respaldo
-  useEffect(() => {
-    if (!currentUser) savePages(pages);
-  }, [pages, currentUser]);
-
-  const handleCloseTutorial = () => {
-    setShowTutorial(false);
-    setTutorialSeen(true);
-  };
-
-  // Crear nueva nota musical exclusiva para la cuenta activa
-  const handleCreatePage = (notebookId?: string) => {
-    const targetNotebookId = notebookId || notebooks[0]?.id || `nb-${Date.now()}`;
-    const newPage: NotePage = {
-      id: `page-${Date.now()}`,
-      notebookId: targetNotebookId,
-      title: 'Nueva Nota Musical',
-      category: 'Armonía',
-      tags: ['Apunte'],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      blocks: [
-        {
-          id: `tb-${Date.now()}`,
-          type: 'text',
-          content: 'Empieza a escribir tus observaciones musicales o añade un pentagrama...'
-        }
-      ]
-    };
-
-    setPages(prev => [newPage, ...prev]);
-    setActivePageId(newPage.id);
-
-    if (currentUser) {
-      saveCloudPage(currentUser.uid, newPage);
-    }
-  };
-
-  // Crear nuevo cuaderno exclusivo para la cuenta activa
-  const handleCreateNotebook = (name: string, description: string) => {
-    const newNb: Notebook = {
-      id: `nb-${Date.now()}`,
-      name,
-      description,
-      color: 'from-amber-600 to-yellow-500',
-      icon: '🎼',
-      pageIds: [],
-      createdAt: Date.now()
-    };
-    setNotebooks(prev => [...prev, newNb]);
-
-    if (currentUser) {
-      saveCloudNotebook(currentUser.uid, newNb);
-    }
-  };
-
-  // Actualizar página
-  const handleUpdatePage = (updatedPage: NotePage) => {
-    setPages(prev => prev.map(p => p.id === updatedPage.id ? updatedPage : p));
-
-    if (currentUser) {
-      saveCloudPage(currentUser.uid, updatedPage);
-    }
-  };
-
-  // Eliminar página
-  const handleDeletePage = (id: string) => {
-    const remaining = pages.filter(p => p.id !== id);
-    setPages(remaining);
-    if (activePageId === id) {
-      setActivePageId(remaining[0]?.id || null);
-    }
-
-    if (currentUser) {
-      deleteCloudPage(currentUser.uid, id);
-    }
-  };
-
-  // Exportar todas las notas en JSON
-  const handleExportAllData = () => {
-    const data = {
-      notebooks,
-      pages,
-      version: '1.0',
-      exportDate: new Date().toISOString()
-    };
-    const jsonStr = JSON.stringify(data, null, 2);
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `music-notes-backup-${new Date().toISOString().slice(0,10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  // Importar JSON
-  const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      try {
-        const parsed = JSON.parse(evt.target?.result as string);
-        if (parsed.notebooks && parsed.pages) {
-          setNotebooks(parsed.notebooks);
-          setPages(parsed.pages);
-          if (parsed.pages.length > 0) {
-            setActivePageId(parsed.pages[0].id);
-          }
-          alert('¡Copia de seguridad importada con éxito!');
-        }
-      } catch (err) {
-        alert('El archivo no es un JSON válido de Music Notes');
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        if (!desktop) setSidebarOpen(true);
+        setTimeout(() => document.getElementById('global-search')?.focus(), 30);
       }
     };
-    reader.readAsText(file);
-  };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [desktop]);
+
+  // Al buscar se muestra la biblioteca con resultados.
+  useEffect(() => {
+    if (query.trim() && view.name !== 'library') setView({ name: 'library' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
+  useEffect(() => {
+    if (view.name !== 'library') setQuery('');
+  }, [view]);
+
+  const openSidebar = () => setSidebarOpen(true);
+
+  let main: React.ReactNode;
+  if (view.name === 'page') {
+    const page = pages.find((p) => p.id === view.pageId);
+    main = page ? <PageView page={page} startInReview={view.review} onOpenSidebar={openSidebar} /> : <Library query={query} onOpenSidebar={openSidebar} />;
+  } else if (view.name === 'notebook') {
+    const nb = notebooks.find((n) => n.id === view.notebookId);
+    main = nb ? <NotebookView notebook={nb} onOpenSidebar={openSidebar} /> : <Library query={query} onOpenSidebar={openSidebar} />;
+  } else {
+    main = <Library query={query} onOpenSidebar={openSidebar} />;
+  }
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-[#f7f4eb]">
-      {/* Modal de Autenticación */}
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        currentUser={currentUser}
-      />
+    <UIContext.Provider value={ui}>
+      <div className="print-root flex h-[100dvh] w-full overflow-hidden bg-desk text-ink">
+        {desktop ? (
+          <div className="no-print h-full w-[280px] shrink-0 border-r border-line">
+            <Sidebar query={query} setQuery={setQuery} mobile={false} />
+          </div>
+        ) : (
+          sidebarOpen && (
+            <div className="no-print fixed inset-0 z-50 flex animate-fade bg-black/35" onPointerDown={(e) => e.target === e.currentTarget && setSidebarOpen(false)}>
+              <div className="h-full w-[86%] max-w-[320px] shadow-pop">
+                <Sidebar query={query} setQuery={setQuery} mobile />
+              </div>
+            </div>
+          )
+        )}
+        <main className="print-root relative h-full min-w-0 flex-1">{main}</main>
+      </div>
 
-      {/* Tutorial Animado Modal */}
+      <TemplatePicker open={modal?.kind === 'template'} onClose={() => setModal(null)} notebookId={modal?.kind === 'template' ? modal.notebookId : undefined} section={modal?.kind === 'template' ? modal.section : undefined} />
+      <NotebookDialog open={modal?.kind === 'notebook'} notebook={modal?.kind === 'notebook' ? modal.notebook : undefined} onClose={() => setModal(null)} />
+      <SettingsModal open={modal?.kind === 'settings'} onClose={() => setModal(null)} />
+      <MethodGuide open={modal?.kind === 'guide'} onClose={() => setModal(null)} />
+      <AuthModal isOpen={modal?.kind === 'auth'} onClose={() => setModal(null)} currentUser={user} />
       <WelcomeTutorialModal
-        isOpen={showTutorial}
-        onClose={handleCloseTutorial}
+        isOpen={modal?.kind === 'welcome'}
+        onClose={() => {
+          setTutorialSeen(true);
+          setModal(null);
+        }}
       />
-
-      {isMobile ? (
-        <MobileLayout
-          notebooks={notebooks}
-          pages={pages}
-          activePageId={activePageId}
-          currentUser={currentUser}
-          onSelectPage={(id) => setActivePageId(id)}
-          onCreatePage={handleCreatePage}
-          onCreateNotebook={handleCreateNotebook}
-          onUpdatePage={handleUpdatePage}
-          onDeletePage={handleDeletePage}
-          onOpenTutorial={() => setShowTutorial(true)}
-          onOpenAuthModal={() => setShowAuthModal(true)}
-        />
-      ) : (
-        <DesktopLayout
-          notebooks={notebooks}
-          pages={pages}
-          activePageId={activePageId}
-          currentUser={currentUser}
-          onSelectPage={(id) => setActivePageId(id)}
-          onCreatePage={handleCreatePage}
-          onCreateNotebook={handleCreateNotebook}
-          onUpdatePage={handleUpdatePage}
-          onDeletePage={handleDeletePage}
-          onExportAllData={handleExportAllData}
-          onImportData={handleImportData}
-          onOpenTutorial={() => setShowTutorial(true)}
-          onOpenAuthModal={() => setShowAuthModal(true)}
-        />
-      )}
-    </div>
+      <Toasts />
+    </UIContext.Provider>
   );
 }
+
+export function App() {
+  return (
+    <StoreProvider>
+      <Shell />
+    </StoreProvider>
+  );
+}
+
 export default App;

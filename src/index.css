@@ -2,57 +2,494 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  *, *::before, *::after { box-sizing: border-box; }
+/* ────────────────────────────────────────────────────────────
+   Tokens de la interfaz (el "escritorio" alrededor del papel)
+   ──────────────────────────────────────────────────────────── */
+:root,
+[data-theme='light'] {
+  color-scheme: light;
+  --desk: #ebe7df;
+  --panel: #f6f4ef;
+  --raised: #fffdf9;
+  --border: #dcd6ca;
+  --border-strong: #c3bba9;
+  --text: #24221e;
+  --muted: #6b665c;
+  --accent: #a8481f;
+  --accent-ink: #ffffff;
+  --accent-soft: #f3e2d6;
+  --danger: #b42318;
+  --danger-soft: #fbe5e2;
+  --ok: #1f7a4d;
+  --focus: #2f6fdf;
+}
 
-  html {
-    font-family: 'Outfit', 'Inter', system-ui, sans-serif;
-    scroll-behavior: smooth;
+[data-theme='dark'] {
+  color-scheme: dark;
+  --desk: #16171a;
+  --panel: #1d1f23;
+  --raised: #25282d;
+  --border: #30343b;
+  --border-strong: #454a53;
+  --text: #ecebe7;
+  --muted: #a19d94;
+  --accent: #e28a60;
+  --accent-ink: #1b1410;
+  --accent-soft: #3a2a22;
+  --danger: #f2877c;
+  --danger-soft: #3b2220;
+  --ok: #6fcf9b;
+  --focus: #7aa7ff;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    margin: 0;
+    background: var(--desk);
+    color: var(--text);
+    font-family: Inter, system-ui, sans-serif, 'Noto Music';
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow: hidden;
   }
-
-  body {
-    background-color: #f7f4eb;
-    color: #1e293b;
-    overflow-x: hidden;
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: 6px;
   }
-
-  /* Thin scrollbar for academic parchment theme */
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  ::-webkit-scrollbar-track {
-    background: #f2ede0;
+    width: 10px;
+    height: 10px;
   }
   ::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 3px;
+    background: var(--border-strong);
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
   }
-  ::-webkit-scrollbar-thumb:hover {
-    background: #d97706;
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
-/* Notebook Parchment paper background grid/line effect */
-.notebook-paper {
-  background-color: #fdfbf7;
-  background-image: linear-gradient(#e5e7eb 1px, transparent 1px);
-  background-size: 100% 28px;
-}
-
-/* Red notebook margin line */
-.notebook-margin {
-  border-left: 2px solid #f87171;
-}
-
-@layer utilities {
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
+@layer components {
+  /* Botones de la interfaz */
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-colors select-none disabled:opacity-40 disabled:pointer-events-none;
+    min-height: 36px;
   }
-  .no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+  .btn-primary {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+  .btn-primary:hover {
+    filter: brightness(1.06);
+  }
+  .btn-ghost {
+    color: var(--text);
+  }
+  .btn-ghost:hover {
+    background: color-mix(in srgb, var(--text) 7%, transparent);
+  }
+  .btn-outline {
+    color: var(--text);
+    border: 1px solid var(--border);
+    background: var(--raised);
+  }
+  .btn-outline:hover {
+    border-color: var(--border-strong);
+  }
+  .btn-danger {
+    color: var(--danger);
+  }
+  .btn-danger:hover {
+    background: var(--danger-soft);
+  }
+  .icon-btn {
+    @apply inline-flex items-center justify-center rounded-lg transition-colors select-none disabled:opacity-35 disabled:pointer-events-none;
+    width: 36px;
+    height: 36px;
+    color: var(--text);
+  }
+  .icon-btn:hover {
+    background: color-mix(in srgb, var(--text) 8%, transparent);
+  }
+  .icon-btn[aria-pressed='true'] {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+
+  .field {
+    @apply w-full rounded-lg px-3 text-sm;
+    min-height: 38px;
+    background: var(--raised);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .field:focus {
+    outline: none;
+    border-color: var(--focus);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 20%, transparent);
+  }
+  .label {
+    @apply block text-xs font-semibold mb-1.5;
+    color: var(--muted);
+  }
+
+  .segmented {
+    @apply inline-flex rounded-lg p-0.5 gap-0.5;
+    background: color-mix(in srgb, var(--text) 6%, transparent);
+  }
+  .segmented > button {
+    @apply rounded-md px-2.5 text-xs font-semibold transition-colors inline-flex items-center gap-1.5;
+    min-height: 30px;
+    color: var(--muted);
+  }
+  .segmented > button[aria-pressed='true'] {
+    background: var(--raised);
+    color: var(--text);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  }
+
+  .popover {
+    background: var(--raised);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 12px 32px -8px rgba(20, 15, 5, 0.28), 0 2px 6px rgba(20, 15, 5, 0.08);
+  }
+  .menu-item {
+    @apply flex w-full items-center gap-2.5 rounded-md px-2.5 text-left text-sm;
+    min-height: 36px;
+    color: var(--text);
+  }
+  .menu-item:hover,
+  .menu-item[data-active='true'] {
+    background: color-mix(in srgb, var(--text) 7%, transparent);
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full px-2 text-xs font-medium;
+    min-height: 22px;
+    background: color-mix(in srgb, var(--text) 7%, transparent);
+    color: var(--muted);
+  }
+}
+
+/* ────────────────────────────────────────────────────────────
+   El papel
+   Variables inyectadas desde PaperSheet:
+   --paper --paper-line --paper-line-soft --paper-margin --ink --ink-soft
+   --rule (alto de renglón, px)  --line-pos (posición de la línea en el renglón)
+   --paper-font --paper-size --cue-w --margin-x
+   ──────────────────────────────────────────────────────────── */
+.paper {
+  position: relative;
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 3px;
+  box-shadow: 0 1px 2px rgba(40, 30, 10, 0.08), 0 10px 30px -10px rgba(40, 30, 10, 0.25);
+  font-family: var(--paper-font);
+}
+[data-theme='dark'] .paper {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 32px -10px rgba(0, 0, 0, 0.7);
+}
+
+.paper-text {
+  font-family: var(--paper-font);
+  font-size: var(--paper-size);
+  line-height: var(--rule);
+  color: var(--ink);
+}
+
+/* Patrón del papel, anclado al inicio del cuerpo para que cada bloque
+   (con altura múltiplo del renglón) caiga siempre sobre una línea. */
+.pattern-ruled {
+  background-image: linear-gradient(
+    to bottom,
+    transparent calc(var(--rule) * var(--line-pos) - 1px),
+    var(--paper-line) calc(var(--rule) * var(--line-pos) - 1px),
+    var(--paper-line) calc(var(--rule) * var(--line-pos)),
+    transparent calc(var(--rule) * var(--line-pos))
+  );
+  background-size: 100% var(--rule);
+}
+/* Cuadrícula: cuadros de medio renglón; la línea fuerte coincide con la base del texto */
+.pattern-grid {
+  background-image: linear-gradient(
+      to bottom,
+      transparent calc(var(--rule) * var(--line-pos) - 1px),
+      var(--paper-line) calc(var(--rule) * var(--line-pos) - 1px),
+      var(--paper-line) calc(var(--rule) * var(--line-pos)),
+      transparent calc(var(--rule) * var(--line-pos))
+    ),
+    linear-gradient(
+      to bottom,
+      transparent calc(var(--rule) * var(--line-pos) - var(--rule) / 2 - 1px),
+      var(--paper-line-soft) calc(var(--rule) * var(--line-pos) - var(--rule) / 2 - 1px),
+      var(--paper-line-soft) calc(var(--rule) * var(--line-pos) - var(--rule) / 2),
+      transparent calc(var(--rule) * var(--line-pos) - var(--rule) / 2)
+    ),
+    linear-gradient(to right, var(--paper-line-soft) 1px, transparent 1px);
+  background-size: 100% var(--rule), 100% var(--rule), calc(var(--rule) / 2) 100%;
+}
+.pattern-dots {
+  background-image: radial-gradient(
+    circle at 1.5px calc(var(--rule) * var(--line-pos)),
+    var(--paper-line) 1.3px,
+    transparent 1.8px
+  );
+  background-size: calc(var(--rule) / 1.25) var(--rule);
+}
+.pattern-staff {
+  --s: calc(var(--rule) * 0.25);
+  background-image: linear-gradient(
+    to bottom,
+    transparent var(--rule),
+    var(--paper-line) var(--rule),
+    var(--paper-line) calc(var(--rule) + 1px),
+    transparent calc(var(--rule) + 1px),
+    transparent calc(var(--rule) + var(--s)),
+    var(--paper-line) calc(var(--rule) + var(--s)),
+    var(--paper-line) calc(var(--rule) + var(--s) + 1px),
+    transparent calc(var(--rule) + var(--s) + 1px),
+    transparent calc(var(--rule) + var(--s) * 2),
+    var(--paper-line) calc(var(--rule) + var(--s) * 2),
+    var(--paper-line) calc(var(--rule) + var(--s) * 2 + 1px),
+    transparent calc(var(--rule) + var(--s) * 2 + 1px),
+    transparent calc(var(--rule) + var(--s) * 3),
+    var(--paper-line) calc(var(--rule) + var(--s) * 3),
+    var(--paper-line) calc(var(--rule) + var(--s) * 3 + 1px),
+    transparent calc(var(--rule) + var(--s) * 3 + 1px),
+    transparent calc(var(--rule) + var(--s) * 4),
+    var(--paper-line) calc(var(--rule) + var(--s) * 4),
+    var(--paper-line) calc(var(--rule) + var(--s) * 4 + 1px),
+    transparent calc(var(--rule) + var(--s) * 4 + 1px)
+  );
+  background-size: 100% calc(var(--rule) * 3);
+}
+
+/* Línea de margen (roja en el papel escolar) */
+.paper-margin-line::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--margin-x);
+  width: 1.5px;
+  background: var(--paper-margin);
+  pointer-events: none;
+}
+/* Línea vertical de Cornell: separa la columna de claves de las notas */
+.cornell-rule::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--cue-w);
+  width: 2px;
+  background: var(--paper-margin);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+/* Texto renderizado (markdown ligero) */
+.md strong {
+  font-weight: 700;
+}
+.paper-hand .md strong {
+  font-weight: 600;
+  -webkit-text-stroke: 0.35px currentColor;
+}
+.md em {
+  font-style: italic;
+}
+.md del {
+  opacity: 0.6;
+}
+.md code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82em;
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  padding: 0 4px;
+  border-radius: 4px;
+}
+.md mark {
+  color: inherit;
+  background: linear-gradient(
+    transparent 22%,
+    var(--hl, rgba(255, 214, 10, 0.55)) 22%,
+    var(--hl, rgba(255, 214, 10, 0.55)) 88%,
+    transparent 88%
+  );
+  padding: 0 2px;
+  border-radius: 2px;
+}
+.md .md-li {
+  display: flex;
+  gap: 0.5em;
+}
+.md .md-bullet {
+  flex: none;
+  width: 1em;
+  text-align: center;
+  color: var(--ink-soft);
+}
+.md .md-quote {
+  border-left: 3px solid var(--ink-soft);
+  padding-left: 0.6em;
+  color: var(--ink-soft);
+}
+.md .md-empty {
+  height: var(--rule);
+}
+
+.block-hl-yellow {
+  --hl-bg: rgba(255, 221, 51, 0.32);
+}
+.block-hl-green {
+  --hl-bg: rgba(88, 204, 120, 0.26);
+}
+.block-hl-blue {
+  --hl-bg: rgba(80, 160, 255, 0.24);
+}
+.block-hl-pink {
+  --hl-bg: rgba(255, 110, 170, 0.24);
+}
+.block-hl-orange {
+  --hl-bg: rgba(255, 150, 60, 0.28);
+}
+.block-hl {
+  background: var(--hl-bg);
+  border-radius: 3px;
+}
+
+/* Notas adhesivas / recuadros sobre el papel */
+.callout {
+  --c: #2f6fdf;
+  position: relative;
+  border-left: 4px solid var(--c);
+  background: color-mix(in srgb, var(--c) 9%, transparent);
+  border-radius: 2px 8px 8px 2px;
+}
+.callout-label {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c);
+}
+
+.hand-input {
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: inherit;
+  font: inherit;
+  width: 100%;
+  resize: none;
+  padding: 0;
+  margin: 0;
+}
+.hand-input::placeholder {
+  color: var(--ink-soft);
+  opacity: 0.55;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-pop {
+  animation: pop-in 0.14s ease-out;
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-fade {
+  animation: fade-in 0.18s ease-out;
+}
+
+/* Modo repaso: tapa el contenido como una hoja doblada sobre las notas */
+.recite-cover {
+  position: absolute;
+  inset: 2px 4px 2px 8px;
+  border-radius: 4px;
+  background: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--paper) 92%, var(--ink) 8%),
+    color-mix(in srgb, var(--paper) 92%, var(--ink) 8%) 8px,
+    color-mix(in srgb, var(--paper) 86%, var(--ink) 14%) 8px,
+    color-mix(in srgb, var(--paper) 86%, var(--ink) 14%) 16px
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 5;
+}
+
+/* ────────────────────────────────────────────────────────────
+   Impresión / PDF: solo el papel
+   ──────────────────────────────────────────────────────────── */
+@media print {
+  @page {
+    margin: 12mm;
+  }
+  body {
+    overflow: visible !important;
+    background: #fff !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-root,
+  .print-root * {
+    overflow: visible !important;
+  }
+  .print-root {
+    position: static !important;
+    height: auto !important;
+  }
+  .paper {
+    box-shadow: none !important;
+    max-width: none !important;
+    margin: 0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 }

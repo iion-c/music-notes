@@ -1,72 +1,97 @@
-export const osmdHtml = `<!DOCTYPE html>
+/**
+ * Vista previa de solo lectura que se incrusta en la hoja. Fondo transparente para que
+ * se vea el papel, color de tinta configurable, y reporta su altura al padre.
+ */
+export const scorePreviewHtml = `<!DOCTYPE html>
 <html>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.8.8/build/opensheetmusicdisplay.min.js"></script>
     <style>
-      html, body { margin: 0; padding: 0; padding-top: 80px; background-color: white; width: 100%; height: 100%; overflow: auto; }
-      #score-container { width: 100%; min-height: 100%; padding-bottom: 200px; transform-origin: 0 0; }
-      svg { overflow: visible !important; }
-      #score-container { overflow: visible !important; padding-top: 40px !important; }
+      html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+      #score-container { width: 100%; }
+      #score-container svg { display: block; overflow: visible; }
     </style>
   </head>
   <body>
-    <div id="score-container" style="padding-top: 30px; overflow: visible;"></div>
+    <div id="score-container"></div>
     <script>
-      var osmd;
-      function send(type, data) { 
+      var osmd = null;
+      var lastHeight = 0;
+      var fixedZoom = false;
+      // Escala según el ancho disponible: unos 4 compases por sistema en una hoja normal.
+      function autoZoom() { var w = document.body.clientWidth || 600; return Math.max(0.58, Math.min(0.92, w / 600)); }
+      function send(type, data) {
         var payload = JSON.stringify({ type: type, data: data });
-        if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(payload);
         if (window.parent) window.parent.postMessage(payload, '*');
+      }
+      function reportSize() {
+        var c = document.getElementById('score-container');
+        var h = Math.ceil(c.getBoundingClientRect().height);
+        if (h !== lastHeight) { lastHeight = h; send('SIZE', { height: h }); }
       }
       window.onload = function() {
         try {
-          osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay("score-container", {
+          osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay('score-container', {
             autoResize: true,
-            backend: "svg",
-            drawingParameters: "compacttight",
+            backend: 'svg',
+            drawingParameters: 'compact',
             drawTitle: false,
             drawSubtitle: false,
-            drawComposer: false
+            drawComposer: false,
+            drawPartNames: false,
+            drawMeasureNumbers: false
           });
-          osmd.rules.PageTopMargin = 8.0;
-          osmd.rules.PageBottomMargin = 5.0;
+          osmd.rules.PageTopMargin = 1.0;
+          osmd.rules.PageBottomMargin = 1.0;
+          osmd.rules.PageLeftMargin = 0.5;
+          osmd.rules.PageRightMargin = 0.5;
           osmd.rules.RenderMultipleRestMeasures = false;
-          osmd.rules.AutoBeamNotes = true;
+          osmd.rules.AutoBeamNotes = false;
           osmd.rules.DrawPartNames = false;
           osmd.rules.DrawPartAbbreviations = false;
+          if (window.ResizeObserver) new ResizeObserver(reportSize).observe(document.getElementById('score-container'));
+          var zt = null;
+          window.addEventListener('resize', function() {
+            clearTimeout(zt);
+            zt = setTimeout(function() { if (osmd && osmd.GraphicSheet && !fixedZoom) { osmd.zoom = autoZoom(); osmd.render(); reportSize(); } }, 200);
+          });
           send('WV_READY', 'Ready');
         } catch (e) { send('ERROR', 'Init: ' + e.message); }
       };
       window.addEventListener('message', function(event) {
         try {
           var msg = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+          if (!osmd) return;
           if (msg.type === 'LOAD_FILE') {
-            document.getElementById('score-container').innerHTML = '';
-            var data = msg.data;
-            var finalContent;
-            if (msg.isBinary) {
-              var binary = atob(data);
-              var len = binary.length;
-              var bytes = new Uint8Array(len);
-              for (var i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
-              finalContent = bytes;
-            } else {
-              if (data.trim().startsWith('<?xml')) { finalContent = data; }
-              else { finalContent = decodeURIComponent(escape(atob(data))); }
-            }
-            osmd.load(finalContent).then(function() {
+            var color = msg.color || '#000000';
+            osmd.setOptions({
+              defaultColorMusic: color,
+              defaultColorNotehead: color,
+              defaultColorStem: color,
+              defaultColorRest: color,
+              defaultColorLabel: color
+            });
+            fixedZoom = !!msg.zoom;
+            osmd.zoom = msg.zoom || autoZoom();
+            osmd.load(msg.data).then(function() {
               osmd.render();
+              reportSize();
               send('LOAD_COMPLETE', 'Done');
             }).catch(function(err) { send('ERROR', 'Load: ' + err); });
-          } else if (msg.type === 'SET_ZOOM') {
-            osmd.Zoom = msg.zoom;
-            osmd.render();
+          } else if (msg.type === 'EXPORT_SVG') {
+            var svg = document.querySelector('#score-container svg');
+            if (!svg) return;
+            var clone = svg.cloneNode(true);
+            clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+            var r = svg.getBoundingClientRect();
+            clone.setAttribute('width', Math.ceil(r.width));
+            clone.setAttribute('height', Math.ceil(r.height));
+            send('SVG', { svg: clone.outerHTML, width: Math.ceil(r.width), height: Math.ceil(r.height) });
           }
         } catch (e) { send('ERROR', 'Runtime: ' + e.message); }
       });
-      document.addEventListener('message', function(e){ window.dispatchEvent(new MessageEvent('message', {data: e.data})); });
     </script>
   </body>
 </html>`;
@@ -300,11 +325,22 @@ export const editorOsmdHtml = `<!DOCTYPE html>
         } catch (e) { return null; }
       }
 
+      // Nota de la línea superior de cada clave (ArmonIA usaba Sol arriba / Fa abajo;
+      // aquí se lee la clave real de cada pentagrama para soportar Fa o Do sueltas).
+      var TOP_LINE_BY_CLEF = {
+        treble: { step: 'F', octave: 5 },
+        bass: { step: 'A', octave: 3 },
+        alto: { step: 'G', octave: 4 },
+        tenor: { step: 'E', octave: 4 }
+      };
+      window.staffClefs = ['treble', 'bass'];
+
       // IMPLEMENTACIÓN 100% IDÉNTICA A ARMONIA-APP
       function pitchFromUnitY(partIndex, unitY) {
         const topLineUnitY = getStaffTopLineUnitY(partIndex, unitY);
         if (topLineUnitY === null) return null;
-        const topRef = partIndex === 0 ? { step: 'F', octave: 5 } : { step: 'A', octave: 3 };
+        const clef = window.staffClefs[partIndex];
+        const topRef = TOP_LINE_BY_CLEF[clef] || (partIndex === 0 ? { step: 'F', octave: 5 } : { step: 'A', octave: 3 });
         const stepsFromTop = Math.round((topLineUnitY - unitY) / 0.5);
         const letterIdx = DIATONIC_STEPS.indexOf(topRef.step);
         const totalIdx = letterIdx + stepsFromTop;
@@ -376,18 +412,27 @@ export const editorOsmdHtml = `<!DOCTYPE html>
 
       var PENCIL_STAFF_HYSTERESIS_UNITS = 7;
 
+      // Origen del SVG en pantalla: la unidad 0 de OSMD coincide con el borde superior del SVG.
+      // Se usa como ancla en lugar del centro de la primera nota, porque la caja de una nota
+      // con plica o de un silencio de compás no está centrada en su altura real.
+      function svgOriginY() {
+        const svg = document.querySelector('#score-container svg');
+        return svg ? svg.getBoundingClientRect().top : null;
+      }
+
       function findStaveTargetFromPoint(clientX, clientY, preferredPartIndex) {
         if (!osmd || !osmd.GraphicSheet) return null;
         try {
           const all = collectAllGraphicalTargets();
           if (all.length === 0) return null;
-          const anchor = all[0];
+          const originY = svgOriginY();
+          if (originY === null) return null;
           const pxPerUnit = getSvgPxPerUnit();
 
           const staffLines = collectAllStaffLines();
           let bestLine = null, bestLineDist = Infinity;
           for (let i = 0; i < staffLines.length; i++) {
-            const predictedY = anchor.cy + (staffLines[i].unitY - anchor.unitY) * pxPerUnit;
+            const predictedY = originY + staffLines[i].unitY * pxPerUnit;
             let d = Math.abs(predictedY - clientY);
             if (preferredPartIndex !== undefined && preferredPartIndex !== null && staffLines[i].partIndex === preferredPartIndex) {
               d -= pxPerUnit * PENCIL_STAFF_HYSTERESIS_UNITS;
@@ -405,9 +450,16 @@ export const editorOsmdHtml = `<!DOCTYPE html>
             const d = Math.abs(all[i].cx - clientX);
             if (d < bestDist) { bestDist = d; best = all[i]; }
           }
+          if (!best) {
+            for (let i = 0; i < all.length; i++) {
+              if (all[i].partIndex !== partIndex) continue;
+              const d = Math.abs(all[i].cx - clientX);
+              if (d < bestDist) { bestDist = d; best = all[i]; }
+            }
+          }
           if (!best) return null;
 
-          const unitY = best.unitY + (clientY - best.cy) / pxPerUnit;
+          const unitY = (clientY - originY) / pxPerUnit;
           return { globalIdx: best.globalIdx, partIndex: partIndex, unitY: unitY };
         } catch (e) { return null; }
       }
@@ -646,7 +698,9 @@ export const editorOsmdHtml = `<!DOCTYPE html>
           var msg = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
           if (msg.type === 'LOAD_FILE') {
             window.isLoadingScore = true;
-            document.getElementById('score-container').innerHTML = '';
+            if (msg.clefs && msg.clefs.length) window.staffClefs = msg.clefs;
+            var scroller = document.scrollingElement || document.body;
+            var keepScroll = scroller.scrollTop;
             var data = msg.data;
             var finalContent;
             if (data.trim().startsWith('<?xml')) { finalContent = data; }
@@ -656,6 +710,7 @@ export const editorOsmdHtml = `<!DOCTYPE html>
               osmd.load(finalContent).then(function() {
                 osmd.render();
                 setupSoplon();
+                scroller.scrollTop = keepScroll;
                 window.isLoadingScore = false;
                 send('LOAD_COMPLETE', 'Done');
               }).catch(function(err) { window.isLoadingScore = false; send('ERROR', 'Load: ' + err); });
@@ -663,8 +718,34 @@ export const editorOsmdHtml = `<!DOCTYPE html>
           } else if (msg.type === 'SET_EDIT_MODE') {
             window.editMode = msg.mode;
             if (msg.mode !== 'pencil') { hideGhost(); hideMinimap(); }
+            if (msg.mode === 'pencil') clearHighlights();
+          } else if (msg.type === 'HIGHLIGHT') {
+            window.currentSelection = { globalIdx: msg.globalIdx, partIndex: msg.partIndex };
+            highlightNote(msg.globalIdx, msg.partIndex);
+          } else if (msg.type === 'CLEAR_HIGHLIGHT') {
+            window.currentSelection = null;
+            clearHighlights();
+          } else if (msg.type === 'SET_ZOOM') {
+            if (osmd) { osmd.zoom = msg.zoom; osmd.render(); setupSoplon(); send('LOAD_COMPLETE', 'Zoom'); }
           }
         } catch (e) { send('ERROR', 'Runtime: ' + e.message); }
+      });
+
+      // OSMD redibuja solo al cambiar el tamaño: volver a enganchar la selección y el resaltado.
+      var resizeTimer = null;
+      window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function() {
+          if (!osmd || !osmd.GraphicSheet) return;
+          setupSoplon();
+          if (window.currentSelection) highlightNote(window.currentSelection.globalIdx, window.currentSelection.partIndex);
+        }, 450);
+      });
+
+      // El foco puede quedar dentro del iframe: reenviar el teclado a la app.
+      document.addEventListener('keydown', function(e) {
+        send('KEY', { key: e.key, ctrl: e.ctrlKey || e.metaKey, shift: e.shiftKey, alt: e.altKey });
+        if (e.key === 'Backspace' || e.key === ' ' || e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
       });
     </script>
   </body>

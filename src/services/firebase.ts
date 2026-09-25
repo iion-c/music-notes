@@ -1,123 +1,121 @@
-import { initializeApp } from "firebase/app";
-import { 
-  getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query 
-} from "firebase/firestore";
-import { 
-  getAuth, signInAnonymously, onAuthStateChanged, User,
-  signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  signInWithPopup, GoogleAuthProvider, signOut
-} from "firebase/auth";
-import type { Notebook, NotePage } from "../types/music";
+import { initializeApp } from 'firebase/app';
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  collection,
+  doc,
+  setDoc,
+  deleteDoc,
+  onSnapshot,
+  query,
+  type Firestore,
+} from 'firebase/firestore';
+import {
+  getAuth,
+  signInAnonymously,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
+  signOut,
+  type User,
+} from 'firebase/auth';
+import type { Notebook, NotePage } from '../types/notes';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBoLYYDQGit2tCLPgACSwJbGWRJ_0D-c90",
-  authDomain: "notas-4d231.firebaseapp.com",
-  projectId: "notas-4d231",
-  storageBucket: "notas-4d231.firebasestorage.app",
-  messagingSenderId: "996705908039",
-  appId: "1:996705908039:web:60506e476a03360f0d4862"
+  apiKey: 'AIzaSyBoLYYDQGit2tCLPgACSwJbGWRJ_0D-c90',
+  authDomain: 'notas-4d231.firebaseapp.com',
+  projectId: 'notas-4d231',
+  storageBucket: 'notas-4d231.firebasestorage.app',
+  messagingSenderId: '996705908039',
+  appId: '1:996705908039:web:60506e476a03360f0d4862',
 };
 
-// Inicialización de Firebase
 export const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+
+// Caché persistente: las hojas siguen disponibles sin conexión (wifi del campus…).
+// ignoreUndefinedProperties evita que Firestore rechace notas con campos opcionales vacíos.
+function createDb(): Firestore {
+  try {
+    return initializeFirestore(app, {
+      ignoreUndefinedProperties: true,
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    });
+  } catch {
+    return initializeFirestore(app, { ignoreUndefinedProperties: true });
+  }
+}
+export const db = createDb();
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
-// Listener de Auth
 export function initAuth(onUserChanged: (user: User | null) => void): () => void {
-  return onAuthStateChanged(auth, (user) => {
-    onUserChanged(user);
-  });
+  return onAuthStateChanged(auth, onUserChanged);
 }
 
-// Iniciar sesión con Correo / Contraseña
 export async function loginWithEmail(email: string, pass: string): Promise<User> {
-  const cred = await signInWithEmailAndPassword(auth, email, pass);
-  return cred.user;
+  return (await signInWithEmailAndPassword(auth, email, pass)).user;
 }
-
-// Registrar nueva cuenta con Correo / Contraseña
 export async function registerWithEmail(email: string, pass: string): Promise<User> {
-  const cred = await createUserWithEmailAndPassword(auth, email, pass);
-  return cred.user;
+  return (await createUserWithEmailAndPassword(auth, email, pass)).user;
 }
-
-// Iniciar sesión con Google
 export async function loginWithGoogle(): Promise<User> {
-  const cred = await signInWithPopup(auth, googleProvider);
-  return cred.user;
+  return (await signInWithPopup(auth, googleProvider)).user;
 }
-
-// Entrar como invitado anónimo
 export async function loginAsGuest(): Promise<User> {
-  const cred = await signInAnonymously(auth);
-  return cred.user;
+  return (await signInAnonymously(auth)).user;
 }
-
-// Cerrar Sesión
 export async function logoutUser(): Promise<void> {
   await signOut(auth);
 }
 
-// Sincronización en tiempo real de Cuadernos en Firestore
 export function syncCloudNotebooks(userId: string, onUpdate: (notebooks: Notebook[]) => void): () => void {
-  const notebooksCol = collection(db, "users", userId, "notebooks");
-  const q = query(notebooksCol);
-  
-  return onSnapshot(q, (snapshot) => {
-    const notebooks: Notebook[] = [];
-    snapshot.forEach((docSnap) => {
-      notebooks.push(docSnap.data() as Notebook);
-    });
-    onUpdate(notebooks);
-  }, (err) => {
-    console.warn("Firestore sync notebooks listener:", err);
-  });
+  return onSnapshot(
+    query(collection(db, 'users', userId, 'notebooks')),
+    (snapshot) => onUpdate(snapshot.docs.map((d) => d.data() as Notebook)),
+    (err) => console.warn('Firestore (cuadernos):', err),
+  );
 }
 
-// Sincronización en tiempo real de Páginas de Notas en Firestore
 export function syncCloudPages(userId: string, onUpdate: (pages: NotePage[]) => void): () => void {
-  const pagesCol = collection(db, "users", userId, "pages");
-  const q = query(pagesCol);
-
-  return onSnapshot(q, (snapshot) => {
-    const pages: NotePage[] = [];
-    snapshot.forEach((docSnap) => {
-      pages.push(docSnap.data() as NotePage);
-    });
-    onUpdate(pages);
-  }, (err) => {
-    console.warn("Firestore sync pages listener:", err);
-  });
+  return onSnapshot(
+    query(collection(db, 'users', userId, 'pages')),
+    (snapshot) => onUpdate(snapshot.docs.map((d) => d.data() as NotePage)),
+    (err) => console.warn('Firestore (hojas):', err),
+  );
 }
 
-// Guardar o Actualizar una Página en la Nube
 export async function saveCloudPage(userId: string, page: NotePage): Promise<void> {
   try {
-    const pageRef = doc(db, "users", userId, "pages", page.id);
-    await setDoc(pageRef, page, { merge: true });
+    // Sin merge: si se borra un bloque debe desaparecer también en la nube.
+    await setDoc(doc(db, 'users', userId, 'pages', page.id), page);
   } catch (err) {
-    console.warn("Error al guardar página en la nube:", err);
+    console.warn('Error al guardar la hoja en la nube:', err);
   }
 }
 
-// Guardar o Actualizar un Cuaderno en la Nube
 export async function saveCloudNotebook(userId: string, notebook: Notebook): Promise<void> {
   try {
-    const nbRef = doc(db, "users", userId, "notebooks", notebook.id);
-    await setDoc(nbRef, notebook, { merge: true });
+    await setDoc(doc(db, 'users', userId, 'notebooks', notebook.id), notebook);
   } catch (err) {
-    console.warn("Error al guardar cuaderno en la nube:", err);
+    console.warn('Error al guardar el cuaderno en la nube:', err);
   }
 }
 
-// Eliminar una página en la Nube
 export async function deleteCloudPage(userId: string, pageId: string): Promise<void> {
   try {
-    const pageRef = doc(db, "users", userId, "pages", pageId);
-    await deleteDoc(pageRef);
+    await deleteDoc(doc(db, 'users', userId, 'pages', pageId));
   } catch (err) {
-    console.warn("Error al eliminar página en la nube:", err);
+    console.warn('Error al eliminar la hoja en la nube:', err);
+  }
+}
+
+export async function deleteCloudNotebook(userId: string, notebookId: string): Promise<void> {
+  try {
+    await deleteDoc(doc(db, 'users', userId, 'notebooks', notebookId));
+  } catch (err) {
+    console.warn('Error al eliminar el cuaderno en la nube:', err);
   }
 }

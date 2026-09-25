@@ -1,139 +1,112 @@
 import React from 'react';
+import { Delete } from 'lucide-react';
 import type { DurationType, PitchAccidental } from '../../types/music';
-import { DURATION_NAMES } from '../../types/music';
-import { Delete, Undo, Redo, Plus } from 'lucide-react';
+import { DURATION_NAMES, EDITOR_DURATIONS } from '../../types/music';
 
 interface Props {
-  selectedDuration: DurationType;
-  setSelectedDuration: (d: DurationType) => void;
-  isDotted: boolean;
-  setIsDotted: (v: boolean) => void;
-  selectedAccidental: PitchAccidental;
-  setSelectedAccidental: (a: PitchAccidental) => void;
-  selectedOctave: number;
-  setSelectedOctave: (fn: (prev: number) => number) => void;
-  onAddNote: (pitch: string) => void;
-  onDeleteLastNote: () => void;
+  duration: DurationType;
+  setDuration: (d: DurationType) => void;
+  dotted: boolean;
+  setDotted: (v: boolean) => void;
+  accidental: PitchAccidental;
+  setAccidental: (a: PitchAccidental) => void;
+  octave: number;
+  setOctave: (o: number) => void;
+  chord: boolean;
+  setChord: (v: boolean) => void;
+  onNote: (step: string) => void;
+  onRest: () => void;
+  onDelete: () => void;
 }
 
-export const EditorKeyboard: React.FC<Props> = ({
-  selectedDuration,
-  setSelectedDuration,
-  isDotted,
-  setIsDotted,
-  selectedAccidental,
-  setSelectedAccidental,
-  selectedOctave,
-  setSelectedOctave,
-  onAddNote,
-  onDeleteLastNote
-}) => {
-  const notes = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+const STEPS = [
+  { step: 'C', solfa: 'Do' },
+  { step: 'D', solfa: 'Re' },
+  { step: 'E', solfa: 'Mi' },
+  { step: 'F', solfa: 'Fa' },
+  { step: 'G', solfa: 'Sol' },
+  { step: 'A', solfa: 'La' },
+  { step: 'B', solfa: 'Si' },
+];
 
+const SHORTCUT: Record<string, string> = { w: '5', h: '4', q: '3', '8': '2', '16': '1' };
+
+/** Teclado de notación de ArmonIA: figura, puntillo, alteración, octava y notas. */
+export function EditorKeyboard(p: Props) {
   return (
-    <div className="bg-[#f8f5ee] border-t border-amber-200 p-2 sm:p-3 rounded-2xl shadow-inner space-y-2.5 select-none text-xs">
-      {/* 1. Barra superior: Duraciones (Figuras), Puntillo, Alteraciones, Octava */}
-      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
-        {/* Duraciones */}
-        <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-amber-200 shadow-sm shrink-0">
-          {Object.entries(DURATION_NAMES).map(([durKey, info]) => (
+    <div className="space-y-2 select-none">
+      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-0.5">
+        <div className="segmented shrink-0" role="group" aria-label="Figura">
+          {EDITOR_DURATIONS.map((d) => (
             <button
-              key={durKey}
-              onClick={() => setSelectedDuration(durKey as DurationType)}
-              className={`px-2.5 py-1 rounded-lg flex items-center gap-1 font-bold text-xs transition-all ${
-                selectedDuration === durKey 
-                  ? 'bg-amber-600 text-white shadow-sm' 
-                  : 'bg-amber-50/50 text-slate-800 hover:bg-amber-100'
-              }`}
+              key={d}
+              aria-pressed={p.duration === d}
+              onClick={() => {
+                p.setDuration(d);
+                if (d === '16') p.setDotted(false);
+              }}
+              title={`${DURATION_NAMES[d].name} (tecla ${SHORTCUT[d]})`}
+              className="!min-h-[40px] !px-2.5"
             >
-              <span className="text-base leading-none">{info.symbol}</span>
+              <span className="font-music text-[22px] leading-none">{DURATION_NAMES[d].symbol}</span>
             </button>
           ))}
         </div>
-
-        {/* Puntillo */}
-        <button
-          onClick={() => setIsDotted(!isDotted)}
-          className={`w-9 h-9 rounded-xl font-extrabold text-lg flex items-center justify-center transition-all border shrink-0 ${
-            isDotted ? 'bg-amber-600 text-white border-amber-600 shadow-sm' : 'bg-white text-slate-800 border-amber-200'
-          }`}
-          title="Agregar puntillo"
-        >
-          .
-        </button>
-
-        {/* Alteraciones */}
-        <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-amber-200 shadow-sm shrink-0">
-          {(['', '#', 'b', 'n'] as PitchAccidental[]).map(acc => (
-            <button
-              key={acc || 'nat'}
-              onClick={() => setSelectedAccidental(selectedAccidental === acc ? '' : acc)}
-              className={`w-8 h-7 rounded-lg font-bold text-xs flex items-center justify-center transition-all ${
-                selectedAccidental === acc 
-                  ? 'bg-amber-600 text-white shadow-sm' 
-                  : 'bg-amber-50/50 text-slate-800 hover:bg-amber-100'
-              }`}
-            >
-              {acc === '' ? '♮' : acc === '#' ? '♯' : acc === 'b' ? '♭' : '♮'}
-            </button>
-          ))}
-        </div>
-
-        {/* Control de Octava */}
-        <div className="flex items-center gap-1.5 bg-white px-2 py-1 rounded-xl border border-amber-200 shadow-sm shrink-0 font-bold">
-          <button 
-            onClick={() => setSelectedOctave(o => Math.max(1, o - 1))}
-            className="w-6 h-6 rounded bg-amber-100 text-amber-900 flex items-center justify-center hover:bg-amber-200"
-          >
-            -
+        <div className="segmented shrink-0">
+          <button aria-pressed={p.dotted} onClick={() => p.setDotted(!p.dotted)} disabled={p.duration === '16'} title="Puntillo (tecla .)" className="!min-h-[40px] !px-3.5 !text-2xl font-bold leading-none">
+            ·
           </button>
-          <span className="text-slate-900 font-mono text-xs px-1">Oct {selectedOctave}</span>
-          <button 
-            onClick={() => setSelectedOctave(o => Math.min(7, o + 1))}
-            className="w-6 h-6 rounded bg-amber-100 text-amber-900 flex items-center justify-center hover:bg-amber-200"
-          >
+          <button aria-pressed={p.chord} onClick={() => p.setChord(!p.chord)} title="Acorde: apilar notas (tecla A)" className="!min-h-[40px]">
+            Acorde
+          </button>
+        </div>
+        <div className="segmented shrink-0" role="group" aria-label="Alteración">
+          {([
+            ['', 'Armadura', 'Según la armadura'],
+            ['#', '♯', 'Sostenido (tecla #)'],
+            ['b', '♭', 'Bemol (tecla B)'],
+            ['n', '♮', 'Becuadro (tecla N)'],
+          ] as [PitchAccidental, string, string][]).map(([a, label, title]) => (
+            <button key={a || 'key'} aria-pressed={p.accidental === a} onClick={() => p.setAccidental(p.accidental === a ? '' : a)} title={title} className={`!min-h-[40px] ${a ? '!px-3 !text-lg' : ''}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="segmented shrink-0 items-center" role="group" aria-label="Octava">
+          <button onClick={() => p.setOctave(Math.max(1, p.octave - 1))} title="Bajar octava (↓)" className="!min-h-[40px] !px-3">
+            −
+          </button>
+          <span className="px-1.5 text-xs font-semibold text-muted">8ª {p.octave}</span>
+          <button onClick={() => p.setOctave(Math.min(7, p.octave + 1))} title="Subir octava (↑)" className="!min-h-[40px] !px-3">
             +
           </button>
         </div>
       </div>
 
-      {/* 2. Teclado Musical de Notas (C D E F G A B + R) y Botón de Borrado */}
-      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-        <div className="flex-1 flex items-center gap-1">
-          {notes.map(note => {
-            const pitchStr = `${note.toLowerCase()}${selectedAccidental}/${selectedOctave}`;
-            return (
-              <button
-                key={note}
-                onClick={() => onAddNote(pitchStr)}
-                className="flex-1 min-w-[38px] h-14 bg-white hover:bg-amber-100/80 active:bg-amber-200 border-2 border-slate-300 hover:border-amber-400 rounded-xl flex flex-col items-center justify-end pb-1.5 shadow-sm transition-all text-slate-900 font-extrabold"
-              >
-                <span className="text-xs">{note}</span>
-                <span className="text-[10px] text-amber-800 font-mono font-medium">{selectedAccidental}{selectedOctave}</span>
-              </button>
-            );
-          })}
-
-          {/* Silencio */}
+      <div className="flex items-stretch gap-1.5">
+        {STEPS.map(({ step, solfa }) => (
           <button
-            onClick={() => onAddNote('R')}
-            className="min-w-[44px] h-14 bg-amber-100 hover:bg-amber-200 border-2 border-amber-300 rounded-xl flex flex-col items-center justify-center shadow-sm transition-all text-amber-900 font-extrabold"
-            title="Insertar Silencio"
+            key={step}
+            onClick={() => p.onNote(step)}
+            className="flex min-w-0 flex-1 flex-col items-center justify-center rounded-lg border border-line bg-raised py-1.5 text-ink transition-colors hover:border-accent active:bg-accent-soft"
+            style={{ minHeight: 52 }}
           >
-            <span className="text-sm">𝄽</span>
-            <span className="text-[10px]">Rest</span>
+            <span className="text-sm font-semibold">{solfa}</span>
+            <span className="text-[10px] text-muted">
+              {step}
+              {p.accidental === '#' ? '♯' : p.accidental === 'b' ? '♭' : ''}
+              {p.octave}
+            </span>
           </button>
-        </div>
-
-        {/* Botón Borrar */}
-        <button
-          onClick={onDeleteLastNote}
-          className="w-12 h-14 bg-rose-600 hover:bg-rose-500 text-white rounded-xl flex items-center justify-center shadow-md shadow-rose-600/20 font-bold transition-all shrink-0"
-          title="Borrar última nota"
-        >
+        ))}
+        <button onClick={p.onRest} className="flex w-14 flex-col items-center justify-center rounded-lg border border-line bg-panel text-ink hover:border-accent" title="Silencio (tecla R)">
+          <span className="font-music text-xl leading-none">𝄽</span>
+          <span className="text-[10px] text-muted">Silencio</span>
+        </button>
+        <button onClick={p.onDelete} className="flex w-14 items-center justify-center rounded-lg text-white" style={{ background: 'var(--danger)' }} title="Borrar (Retroceso)" aria-label="Borrar nota">
           <Delete size={20} />
         </button>
       </div>
     </div>
   );
-};
+}
