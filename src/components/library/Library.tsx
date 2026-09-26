@@ -39,6 +39,7 @@ export function PageThumb({ page, onClick, showNotebook }: { page: NotePage; onC
     .map(blockPlainText)
     .join('\n')
     .replace(/\*\*|==|~~|`/g, '')
+    .replace(/\{[a-z]+\}|\{\/\}/g, '')
     .replace(/\(#\)/g, '♯')
     .replace(/\(b\)/g, '♭')
     .replace(/->/g, '→')

@@ -55,6 +55,8 @@ export const INKS: { id: string; name: string; light: string; dark: string }[] =
   { id: 'verde', name: 'Verde', light: '#1d6b4c', dark: '#86d4ad' },
   { id: 'morado', name: 'Morado', light: '#5a3d9a', dark: '#c5aefc' },
   { id: 'rojo', name: 'Rojo', light: '#b3261e', dark: '#ff9a90' },
+  { id: 'naranja', name: 'Naranja', light: '#c2410c', dark: '#ffb07a' },
+  { id: 'rosa', name: 'Rosa', light: '#be185d', dark: '#ff9ecb' },
 ];
 
 interface FontDef {
@@ -117,6 +119,8 @@ export function paperVars(style: PaperStyle): CSSProperties {
     '--paper-size': `${Math.round(rule * font.size * style.textScale * 10) / 10}px`,
     '--cue-w': `${style.cueWidth}%`,
     '--margin-x': `${Math.round(rule * 2.2)}px`,
+    // Colores para texto puntual ({rojo}…{/}); se aclaran solos sobre papel nocturno.
+    ...Object.fromEntries(INKS.map((i) => [`--ink-${i.id}`, tone.dark ? i.dark : i.light])),
   } as CSSProperties;
 }
 

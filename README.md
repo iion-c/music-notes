@@ -16,11 +16,12 @@ El diseño se basa en investigación sobre toma de apuntes y aprendizaje (métod
 - Plantillas: clase Cornell, ejercicio de armonía (sistema de piano), dictado/solfeo (papel pautado), análisis de obra, esquema, tabla comparativa, bitácora de estudio y hoja libre.
 - Bloques: texto, títulos, recuadros (definición, regla, ejemplo, importante, pregunta, excepción), lista de tareas, tabla, imagen (pegar o foto de la pizarra), dibujo a mano y pentagrama. Escribe `/` en una línea vacía para insertar cualquiera.
 - Texto con formato ligero: `**negrita**`, `*cursiva*`, `==resaltado==`, viñetas `- `, listas `1. `, y atajos musicales `(#)` → ♯, `(b)` → ♭, `(n)` → ♮, `->` → →.
+- Color de texto puntual: selecciona el texto y elige uno de 8 colores en la barra (botón A); se guarda como `{rojo}texto{/}` y se aclara solo sobre papel nocturno.
 - Marcatextos por bloque, sangría (Tab / Shift+Tab), mover, duplicar.
 
 **Personalización** (por hoja, por cuaderno o global)
 - Papel: rayado, cuadriculado, punteado, pautado o liso; blanco, marfil, reciclado o nocturno.
-- Letra: manuscrita, script legible, libro (serif) o moderna; seis tintas.
+- Letra: manuscrita, script legible, libro (serif) o moderna; ocho tintas.
 - Tamaño de letra, interlineado, ancho de la columna de claves, línea de margen.
 - Tema claro/oscuro de la interfaz, tamaño de hoja (Carta, A4, ancha).
 

@@ -5,6 +5,7 @@
  *   **negrita**  *cursiva*  ==resaltado==  ~~tachado~~  `código`
  *   - viñeta   1. lista   > cita   [ ] / [x] casilla
  *   (#) ♯  (b) ♭  (n) ♮  ->  →  =>  ⇒
+ *   {rojo}texto{/}  color puntual (azul, negro, grafito, verde, morado, rojo, naranja, rosa)
  */
 
 function escapeHtml(s: string): string {
@@ -25,8 +26,15 @@ function inline(s: string): string {
   out = out.replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>');
   out = out.replace(/==([^=]+)==/g, '<mark>$1</mark>');
   out = out.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+  // Color puntual: {rojo}texto{/}. Solo nombres conocidos, así nada ajeno llega al estilo.
+  out = out.replace(new RegExp(`\\{(${TEXT_COLORS.join('|')})\\}(.*?)\\{\\/\\}`, 'g'), '<span style="color:var(--ink-$1)">$2</span>');
+  // Marcas sin cerrar (p. ej. al borrar a medias): no mostrarlas.
+  out = out.replace(/\{[a-z]+\}|\{\/\}/g, (m) => (m === '{/}' || TEXT_COLORS.includes(m.slice(1, -1)) ? '' : m));
   return out;
 }
+
+/** Colores disponibles para el texto; coinciden con las tintas del papel (lib/paper.ts). */
+export const TEXT_COLORS = ['azul', 'negro', 'grafito', 'verde', 'morado', 'rojo', 'naranja', 'rosa'];
 
 export function renderMarkdownLite(text: string): string {
   const lines = text.split('\n');

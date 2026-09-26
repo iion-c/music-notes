@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Bold, Highlighter, Italic, List } from 'lucide-react';
+import { Baseline, Bold, Highlighter, Italic, List } from 'lucide-react';
 import { renderMarkdownLite } from '../../../lib/markdown';
-import { insertAtCursor, useAutoGrow, wrapSelection } from '../paperHooks';
+import { insertAtCursor, stripColor, useAutoGrow, wrapLines, wrapSelection } from '../paperHooks';
+import { INKS } from '../../../lib/paper';
 
 const SYMBOLS = ['♯', '♭', '♮', '°', 'ø', '→', '𝄞', '𝄢', '½'];
 
@@ -43,7 +44,9 @@ export function TextEditor({
   ariaLabel,
 }: TextEditorProps) {
   const [editing, setEditing] = useState(!!autoFocus);
-  const ref = useAutoGrow(value);
+  const ref = useAutoGrow(value, editing);
+  const [showColors, setShowColors] = useState(false);
+  const [lastColor, setLastColor] = useState('rojo');
   const html = useMemo(() => renderMarkdownLite(value), [value]);
   const barRef = useRef<HTMLDivElement>(null);
 
@@ -53,6 +56,7 @@ export function TextEditor({
 
   useEffect(() => {
     onEditingChange?.(editing);
+    if (!editing) setShowColors(false);
     if (editing && ref.current && document.activeElement !== ref.current) {
       ref.current.focus();
       const len = ref.current.value.length;
@@ -132,32 +136,74 @@ export function TextEditor({
       {!plain && (
         <div
           ref={barRef}
-          className="no-print popover absolute -top-11 left-0 z-20 flex items-center gap-0.5 p-1 font-ui animate-pop"
+          className="no-print popover absolute bottom-full left-0 z-20 mb-1.5 flex flex-col gap-1 p-1 font-ui animate-pop"
           onPointerDown={(e) => e.preventDefault()}
         >
-          <button className="icon-btn !h-8 !w-8" title="Negrita (Ctrl+B)" onClick={() => ref.current && apply(wrapSelection(ref.current, '**'))}>
-            <Bold size={15} />
-          </button>
-          <button className="icon-btn !h-8 !w-8" title="Cursiva (Ctrl+I)" onClick={() => ref.current && apply(wrapSelection(ref.current, '*'))}>
-            <Italic size={15} />
-          </button>
-          <button className="icon-btn !h-8 !w-8" title="Resaltar (Ctrl+Shift+H)" onClick={() => ref.current && apply(wrapSelection(ref.current, '=='))}>
-            <Highlighter size={15} />
-          </button>
-          <button className="icon-btn !h-8 !w-8" title="Viñeta" onClick={() => ref.current && apply(insertAtCursor(ref.current, value && !value.endsWith('\n') ? '\n- ' : '- '))}>
-            <List size={15} />
-          </button>
-          <span className="mx-1 h-5 w-px bg-line" />
-          {SYMBOLS.map((s) => (
-            <button
-              key={s}
-              className="icon-btn !h-8 !w-7 font-music text-[15px]"
-              title={`Insertar ${s}`}
-              onClick={() => ref.current && apply(insertAtCursor(ref.current, s))}
-            >
-              {s}
+          <div className="flex items-center gap-0.5">
+            <button className="icon-btn !h-8 !w-8" title="Negrita (Ctrl+B)" onClick={() => ref.current && apply(wrapSelection(ref.current, '**'))}>
+              <Bold size={15} />
             </button>
-          ))}
+            <button className="icon-btn !h-8 !w-8" title="Cursiva (Ctrl+I)" onClick={() => ref.current && apply(wrapSelection(ref.current, '*'))}>
+              <Italic size={15} />
+            </button>
+            <button className="icon-btn !h-8 !w-8" title="Resaltar (Ctrl+Shift+H)" onClick={() => ref.current && apply(wrapSelection(ref.current, '=='))}>
+              <Highlighter size={15} />
+            </button>
+            <button
+              className="icon-btn !h-8 !w-8"
+              title="Color del texto seleccionado"
+              aria-pressed={showColors}
+              aria-label="Color del texto"
+              onClick={() => setShowColors((v) => !v)}
+            >
+              <Baseline size={16} style={{ color: `var(--ink-${lastColor})` }} />
+            </button>
+            <button className="icon-btn !h-8 !w-8" title="Viñeta" onClick={() => ref.current && apply(insertAtCursor(ref.current, value && !value.endsWith('\n') ? '\n- ' : '- '))}>
+              <List size={15} />
+            </button>
+            <span className="mx-1 h-5 w-px bg-line" />
+            {SYMBOLS.map((s) => (
+              <button
+                key={s}
+                className="icon-btn !h-8 !w-7 font-music text-[15px]"
+                title={`Insertar ${s}`}
+                onClick={() => ref.current && apply(insertAtCursor(ref.current, s))}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+          {showColors && (
+            <div className="flex items-center gap-1 border-t border-line px-1 pt-1" role="group" aria-label="Colores de texto">
+              {INKS.map((ink) => (
+                <button
+                  key={ink.id}
+                  className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-[color-mix(in_srgb,var(--text)_7%,transparent)]"
+                  title={ink.name}
+                  aria-label={`Texto ${ink.name.toLowerCase()}`}
+                  onClick={() => {
+                    if (!ref.current) return;
+                    setLastColor(ink.id);
+                    setShowColors(false);
+                    apply(wrapLines(ref.current, `{${ink.id}}`, '{/}'));
+                  }}
+                >
+                  <span className="block h-5 w-5 rounded-full" style={{ background: `var(--ink-${ink.id})`, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,.15)' }} />
+                </button>
+              ))}
+              <button
+                className="btn btn-ghost !min-h-[32px] !px-2 text-xs"
+                title="Quitar el color de la selección (o de la línea)"
+                onClick={() => {
+                  if (!ref.current) return;
+                  setShowColors(false);
+                  apply(stripColor(ref.current));
+                }}
+              >
+                Sin color
+              </button>
+            </div>
+          )}
         </div>
       )}
       <textarea

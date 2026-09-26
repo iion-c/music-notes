@@ -32,8 +32,12 @@ export function useSnapToRule<T extends HTMLElement>() {
   return { outer, inner };
 }
 
-/** Textarea que crece con el contenido en múltiplos del renglón. */
-export function useAutoGrow(value: string) {
+/**
+ * Textarea que crece con el contenido en múltiplos del renglón.
+ * `mounted` debe cambiar cuando el textarea aparece (p. ej. al entrar a editar),
+ * porque entonces hay que medirlo aunque el texto no haya cambiado.
+ */
+export function useAutoGrow(value: string, mounted: unknown = true) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const resize = useCallback(() => {
     const el = ref.current;
@@ -43,15 +47,62 @@ export function useAutoGrow(value: string) {
     const h = Math.max(rule, Math.ceil((el.scrollHeight - 1) / rule) * rule);
     el.style.height = `${h}px`;
   }, []);
-  useLayoutEffect(resize, [value, resize]);
+  useLayoutEffect(resize, [value, mounted, resize]);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     const ro = new ResizeObserver(() => resize());
     ro.observe(el.parentElement || el);
+    // Las fuentes web cambian la altura de las líneas cuando terminan de cargar.
+    document.fonts?.ready.then(resize).catch(() => {});
     return () => ro.disconnect();
-  }, [resize]);
+  }, [mounted, resize]);
   return ref;
+}
+
+/** Envuelve cada línea seleccionada, dejando fuera las marcas de viñeta/lista para no romperlas. */
+export function wrapLines(el: HTMLTextAreaElement, before: string, after: string): string {
+  const { selectionStart: s, selectionEnd: e, value } = el;
+  if (s === e) {
+    const next = value.slice(0, s) + before + after + value.slice(e);
+    requestAnimationFrame(() => {
+      el.selectionStart = el.selectionEnd = s + before.length;
+    });
+    return next;
+  }
+  const wrapped = value
+    .slice(s, e)
+    .split('\n')
+    .map((line) => {
+      if (!line.trim()) return line;
+      const m = line.match(/^(\s*(?:[-*•]|\d+[.)]|[a-z][.)])\s+(?:\[[ xX]\]\s+)?)(.*)$/);
+      return m ? `${m[1]}${before}${m[2]}${after}` : `${before}${line}${after}`;
+    })
+    .join('\n');
+  const next = value.slice(0, s) + wrapped + value.slice(e);
+  requestAnimationFrame(() => {
+    el.selectionStart = s;
+    el.selectionEnd = s + wrapped.length;
+  });
+  return next;
+}
+
+/** Quita las marcas de color de la selección (o de la línea actual si no hay selección). */
+export function stripColor(el: HTMLTextAreaElement): string {
+  const { value } = el;
+  let s = el.selectionStart;
+  let e = el.selectionEnd;
+  if (s === e) {
+    s = value.lastIndexOf('\n', s - 1) + 1;
+    const nl = value.indexOf('\n', e);
+    e = nl === -1 ? value.length : nl;
+  }
+  const cleaned = value.slice(s, e).replace(/\{[a-z]+\}|\{\/\}/g, '');
+  requestAnimationFrame(() => {
+    el.selectionStart = s;
+    el.selectionEnd = s + cleaned.length;
+  });
+  return value.slice(0, s) + cleaned + value.slice(e);
 }
 
 /** Envuelve la selección de un textarea con marcas (negrita, resaltado…). */
